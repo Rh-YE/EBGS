@@ -1,0 +1,183 @@
+model:
+  base_learning_rate: 1.0e-05
+  target: sgm.models.astreIR_SBn.MultiModalSBDiffusion
+  params:
+
+    # I2SB diffusion parameters
+    interval: 500
+    beta_max: 0.15
+    ot_ode: false
+    clip_denoise: false
+    nfe: 10
+    log_count: 10
+
+    use_ema: true
+    ema_decay: 0.999
+    desi_bands: 2         # number of DESI input bands (determines UNet in_channels)
+
+    input_key_euclid: euclid_img
+    input_key_desi: desi_img
+    input_key_desi_error: desi_error
+    input_key_euclid_error: euclid_error
+
+    # [EXT-1] Pixel stretch (BandwiseArcsinhTransform)
+    # Parameters measured from the training set; lower/upper bounds and background stats per band.
+    pixel_transform_config:
+      target: sgm.transforms.pixel_stretch.BandwiseArcsinhTransform
+      params:
+        euclid:
+          lower_bound: [-0.015434673279337585]
+          upper_bound: [2.0928584933740315]
+          bg_median:   [0.00031603622]
+          bg_std:      [0.017898018]
+        desi:
+          lower_bound: [-0.004908290165057406, -0.0067522825711406765, -0.02320259420014918]
+          upper_bound: [9.20013931569946,      10.000000953674316,     10.00001049041748]
+          bg_median:   [0.0001529879,           0.00022485493,          0.0005653821]
+          bg_std:      [0.06832892,             0.11801922,             0.13742818]
+
+    # SB loss: MSE weighted by euclid_err^2 (chi2 form)
+    sb_chi2_loss: true
+
+    # UNet backbone
+    network_config:
+      target: sgm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        use_checkpoint: false
+        # in_channels is set dynamically by the model; this value is overridden
+        out_channels: 1
+        model_channels: 64
+        attention_resolutions:
+        - 16
+        - 8
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 4
+        - 4
+        num_head_channels: 32
+        transformer_depth: 1
+        spatial_transformer_attn_type: softmax-xformers
+        num_classes: null
+
+    optimizer_config:
+      target: torch.optim.AdamW
+      params:
+        lr: 0.0001
+        betas: [0.9, 0.999]
+        weight_decay: 1.0e-05
+
+    scheduler_config:
+      target: sgm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps: [1000]
+        cycle_lengths: [100000]
+        f_start: [1.0e-06]
+        f_max: [1.0]
+        f_min: [0.1]
+
+
+data:
+  target: sgm.data.datamodule.DataModule
+  params:
+    train:
+      dataset:
+        paths:
+          euclid:
+            - /path/to/your/dataset/train/Euclid
+          desi:
+            - /path/to/your/dataset/train/DESI_reproj
+        image_folder: BGSUB
+        error_folder: RMS
+        psf_folder: PSF
+        use_labels: false
+        match_files: true
+        crop: true
+        random_crop: false
+        target_w: 128
+        target_h: ${data.params.train.dataset.target_w}
+        error_type: rms
+        desi_img_valid_range:
+          - [-0.05, 5]
+          - [-0.05, 5]
+          - [-0.05, 5]
+        desi_err_valid_range:
+          - [1.0e-10, 1.0]
+          - [1.0e-10, 1.0]
+          - [1.0e-10, 1.0]
+        euclid_img_valid_range:
+          - [-0.05, 20]
+        euclid_err_valid_range:
+          - [0, 1.0]
+      loader:
+        batch_size: 256
+        num_workers: 32
+        pin_memory: true
+        persistent_workers: true
+
+    validation:
+      dataset:
+        paths:
+          euclid:
+            - /path/to/your/dataset/valid/Euclid
+          desi:
+            - /path/to/your/dataset/valid/DESI_reproj
+        image_folder: ${data.params.train.dataset.image_folder}
+        error_folder: ${data.params.train.dataset.error_folder}
+        error_type: ${data.params.train.dataset.error_type}
+        use_labels: false
+        match_files: true
+        crop: ${data.params.train.dataset.crop}
+        random_crop: false
+        target_w: ${data.params.train.dataset.target_w}
+        target_h: ${data.params.train.dataset.target_h}
+      loader:
+        batch_size: 32
+        num_workers: 4
+        pin_memory: true
+        persistent_workers: true
+
+
+lightning:
+  strategy:
+    target: pytorch_lightning.strategies.DDPStrategy
+    params:
+      find_unused_parameters: false
+      static_graph: true
+  modelcheckpoint:
+    params:
+      every_n_epochs: 1
+      save_top_k: 20
+      monitor: val/reduced_chi2
+      mode: min
+  callbacks:
+    metrics_over_trainsteps_checkpoint:
+      params:
+        every_n_train_steps: 10000
+    image_logger:
+      target: main.ImageLogger
+      params:
+        disabled: false
+        rescale: false
+        enable_autocast: true
+        batch_frequency: 30000
+        max_images: 64
+        increase_log_steps: false
+        log_first_step: true
+        log_images_kwargs:
+          use_ema_scope: false
+          'N': 32
+          n_rows: 4
+    checkpoint_linker:
+      params:
+        link_interval: 500
+  trainer:
+    devices: 1,
+    limit_val_batches: 200
+    benchmark: true
+    val_check_interval: 1.0
+    num_sanity_val_steps: 0
+    max_epochs: 200
+    accelerator: gpu
+    precision: bf16-mixed

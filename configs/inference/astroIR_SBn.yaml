@@ -1,0 +1,162 @@
+# Inference config for the I2SB DESI->Euclid model.
+# Model parameters must match the training config exactly.
+# Only the data section differs: point to your test DESI images.
+
+model:
+  base_learning_rate: 1.0e-05
+  target: sgm.models.astreIR_SBn.MultiModalSBDiffusion
+  params:
+    use_i2sb: true
+    det_loss_type: chi2
+    det_loss_reduction: mean
+    interval: 500
+    beta_max: 0.15
+    ot_ode: false
+    clip_denoise: false
+    nfe: 10
+    log_count: 10
+    x1_mode: rz
+    use_ema: true
+    ema_decay: 0.999
+    desi_bands: 2
+    input_key_euclid: euclid_img
+    input_key_desi: desi_img
+    input_key_desi_error: desi_error
+    input_key_euclid_error: euclid_error
+    pixel_transform_config:
+      target: sgm.transforms.pixel_stretch.BandwiseArcsinhTransform
+      params:
+        euclid:
+          lower_bound: [-0.015434673279337585]
+          upper_bound: [2.0928584933740315]
+          bg_median:   [0.00031603622]
+          bg_std:      [0.017898018]
+        desi:
+          lower_bound: [-0.004908290165057406, -0.0067522825711406765, -0.02320259420014918]
+          upper_bound: [9.20013931569946,      10.000000953674316,     10.00001049041748]
+          bg_median:   [0.0001529879,           0.00022485493,          0.0005653821]
+          bg_std:      [0.06832892,             0.11801922,             0.13742818]
+    heteroscedastic: false
+    hetero_cond_channel: false
+    snr_eps: 0.001
+    w_clamp_min: 0.1
+    w_clamp_max: 10.0
+    sb_loss_type: mse
+    sb_huber_delta: 1.0
+    sb_bright_weight: 0.0
+    sb_pred_type: x0
+    sb_chi2_loss: true
+    adversarial: false
+    disc_in_channels: 1
+    disc_ndf: 32
+    disc_n_layers: 2
+    disc_use_actnorm: false
+    adv_weight: 0.01
+    disc_loss_type: hinge
+    adv_start_step: 50000
+    network_config:
+      target: sgm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        use_checkpoint: false
+        out_channels: 1
+        model_channels: 64
+        attention_resolutions:
+        - 16
+        - 8
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 4
+        - 4
+        num_head_channels: 32
+        transformer_depth: 1
+        spatial_transformer_attn_type: softmax-xformers
+        num_classes: null
+    optimizer_config:
+      target: torch.optim.AdamW
+      params:
+        lr: 0.0001
+        betas: [0.9, 0.999]
+        weight_decay: 1.0e-05
+    scheduler_config:
+      target: sgm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps: [1000]
+        cycle_lengths: [100000]
+        f_start: [1.0e-06]
+        f_max: [1.0]
+        f_min: [0.1]
+
+
+data:
+  target: sgm.data.datamodule.DataModule
+  params:
+    test:
+      dataset:
+        paths:
+          desi:
+            - /path/to/your/DESI/images   # <-- update this path
+          # euclid:                        # optional: include to save ground-truth HDU
+          #   - /path/to/your/Euclid/images
+        image_folder: BGSUB
+        error_folder: RMS
+        psf_folder: PSF
+        use_labels: false
+        match_files: true
+        crop: true
+        random_crop: false
+        target_w: 128
+        target_h: ${data.params.test.dataset.target_w}
+        error_type: rms
+        reproj_wcs: true
+        reproj_mode: fast
+        apply_zp_conv: false
+      loader:
+        batch_size: 256
+        num_workers: 32
+        pin_memory: true
+        persistent_workers: true
+        prefetch_factor: 4
+
+
+lightning:
+  strategy:
+    target: pytorch_lightning.strategies.DDPStrategy
+    params:
+      find_unused_parameters: false
+      static_graph: true
+  modelcheckpoint:
+    params:
+      every_n_epochs: 1
+      save_top_k: 20
+      monitor: val/reduced_chi2
+  callbacks:
+    metrics_over_trainsteps_checkpoint:
+      params:
+        every_n_train_steps: 10000
+    image_logger:
+      target: main.ImageLogger
+      params:
+        disabled: false
+        rescale: false
+        enable_autocast: true
+        batch_frequency: 3000
+        max_images: 64
+        increase_log_steps: false
+        log_first_step: true
+        log_images_kwargs:
+          use_ema_scope: false
+          'N': 32
+          n_rows: 4
+    checkpoint_linker:
+      params:
+        link_interval: 500
+  trainer:
+    devices: 1,
+    limit_val_batches: 200
+    benchmark: true
+    val_check_interval: 1.0
+    num_sanity_val_steps: 0
+    max_epochs: 100
+    accelerator: gpu
