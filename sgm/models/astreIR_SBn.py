@@ -9,7 +9,7 @@
 #     -> build_x1 / build_cond
 #     -> diffusion.q_sample() -> xt
 #     -> run_network(xt, step, cond) -> pred
-#     -> sb_loss(pred, x0)
+#     -> sb_loss(pred, label)
 
 import logging
 import numpy as np
@@ -300,14 +300,9 @@ class MultiModalSBDiffusion(pl.LightningModule):
         input_key_euclid_error: str = "euclid_error",
         input_key_pixel_mask: str = "pixel_mask",
 
-        # SB loss: "mse" only; chi2-weighted by euclid_err
-        sb_chi2_loss: bool = False,
-
         **kwargs,
     ):
         super().__init__()
-
-        self.sb_chi2_loss = bool(sb_chi2_loss)
 
         self.input_key_euclid       = input_key_euclid
         self.input_key_desi         = input_key_desi
@@ -492,22 +487,11 @@ class MultiModalSBDiffusion(pl.LightningModule):
         dof = gt.numel()
         return chi2 / dof if dof > 0 else chi2
 
-    def sb_loss(self, pred, label, pixel_mask=None, euclid_err=None):
-        """
-        SB diffusion loss (MSE on score prediction).
-
-        pred, label : (B, 1, H, W)  — both are scores (xt - x0) / std_fwd
-        euclid_err  : (B, 1, H, W) or None; used for chi2 weighting if sb_chi2_loss=True
-        """
+    def sb_loss(self, pred, label, pixel_mask=None):
+        """MSE on score prediction. pred, label: (B, 1, H, W)"""
         err = (pred - label).pow(2)
-
-        if self.sb_chi2_loss and euclid_err is not None:
-            sigma2 = euclid_err.clamp(min=1e-10).pow(2)
-            err = err / sigma2
-
         if pixel_mask is None:
             return err.mean()
-
         mask_f = pixel_mask.float()
         denom = mask_f.sum().clamp(min=1.0)
         return (err * mask_f).sum() / denom

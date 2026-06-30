@@ -9,7 +9,6 @@ model:
     interval: 500
     beta_max: 0.15
     ot_ode: false
-    clip_denoise: false
     nfe: 10
     log_count: 10
 

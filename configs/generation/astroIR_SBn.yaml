@@ -7,13 +7,11 @@ model:
     interval: 500
     beta_max: 0.15
     ot_ode: false
-    clip_denoise: false
     nfe: 10
     log_count: 10
 
     use_ema: true
     ema_decay: 0.999
-    desi_bands: 2         # number of DESI input bands (determines UNet in_channels)
 
     input_key_euclid: euclid_img
     input_key_desi: desi_img
