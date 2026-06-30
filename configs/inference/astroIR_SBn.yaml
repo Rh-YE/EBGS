@@ -6,23 +6,21 @@ model:
   base_learning_rate: 1.0e-05
   target: sgm.models.astreIR_SBn.MultiModalSBDiffusion
   params:
-    use_i2sb: true
-    det_loss_type: chi2
-    det_loss_reduction: mean
     interval: 500
     beta_max: 0.15
     ot_ode: false
     clip_denoise: false
     nfe: 10
     log_count: 10
-    x1_mode: rz
+
     use_ema: true
     ema_decay: 0.999
-    desi_bands: 2
+
     input_key_euclid: euclid_img
     input_key_desi: desi_img
     input_key_desi_error: desi_error
     input_key_euclid_error: euclid_error
+
     pixel_transform_config:
       target: sgm.transforms.pixel_stretch.BandwiseArcsinhTransform
       params:
@@ -36,24 +34,6 @@ model:
           upper_bound: [9.20013931569946,      10.000000953674316,     10.00001049041748]
           bg_median:   [0.0001529879,           0.00022485493,          0.0005653821]
           bg_std:      [0.06832892,             0.11801922,             0.13742818]
-    heteroscedastic: false
-    hetero_cond_channel: false
-    snr_eps: 0.001
-    w_clamp_min: 0.1
-    w_clamp_max: 10.0
-    sb_loss_type: mse
-    sb_huber_delta: 1.0
-    sb_bright_weight: 0.0
-    sb_pred_type: x0
-    sb_chi2_loss: true
-    adversarial: false
-    disc_in_channels: 1
-    disc_ndf: 32
-    disc_n_layers: 2
-    disc_use_actnorm: false
-    adv_weight: 0.01
-    disc_loss_type: hinge
-    adv_start_step: 50000
     network_config:
       target: sgm.modules.diffusionmodules.openaimodel.UNetModel
       params:

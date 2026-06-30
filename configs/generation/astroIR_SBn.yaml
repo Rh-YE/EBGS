@@ -36,9 +36,6 @@ model:
           bg_median:   [0.0001529879,           0.00022485493,          0.0005653821]
           bg_std:      [0.06832892,             0.11801922,             0.13742818]
 
-    # SB loss: MSE weighted by euclid_err^2 (chi2 form)
-    sb_chi2_loss: true
-
     # UNet backbone
     network_config:
       target: sgm.modules.diffusionmodules.openaimodel.UNetModel
