@@ -22,13 +22,13 @@ The UNet is trained to predict the score `(x_t − x_0) / σ_fwd`.
 
 **Pixel transform** (`BandwiseArcsinhTransform` in `pixel_stretch.py`): each band is independently clipped, background-subtracted, arcsinh-stretched, and linearly mapped to `[−1, 1]`. Parameters (lower/upper bound, bg_median, bg_std) are measured from the training set and stored in the config.
 
-**Loss**: MSE on the score prediction (`sb_loss`):
+**Loss**: plain MSE on the score prediction:
 
 ```
 L = mean( (pred − label)² )
 ```
 
-where `label = (x_t − x_0) / σ_fwd`. `sb_loss` supports optional χ²-weighting (`err / σ_euclid²`) when `sb_chi2_loss: true` and a `pixel_mask` for excluding invalid pixels, but in the current `training_step` neither `euclid_err` nor `pixel_mask` is passed to `sb_loss` — the effective training loss is plain MSE. The monitoring metric `val/reduced_chi2` is computed separately and does use `euclid_err`.
+where `label = (x_t − x_0) / σ_fwd`. The monitoring metric `val/reduced_chi2` is computed separately using the Euclid error map and is used for checkpoint selection (`monitor: val/reduced_chi2, mode: min`).
 
 ---
 
