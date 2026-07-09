@@ -67,7 +67,7 @@ EBGS/
 ## Installation
 
 ```bash
-git clone https://github.com/<your-org>/EBGS.git
+git clone https://github.com/Rh-YE/EBGS.git
 cd EBGS
 conda env create -f environment.yaml
 conda activate ai4galaxy
@@ -235,13 +235,19 @@ All components (model, dataset, optimizer, callbacks) are specified as `target: 
 If you use this code in your research, please cite:
 
 ```bibtex
-@misc{ebgs2026,
-  title  = {EBGS: Euclid BGS Image Synthesis via Schr\"{o}dinger Bridge Diffusion},
-  author = {Anonymous},
-  year   = {2026},
-  url    = {https://github.com/<your-org>/EBGS}
+@article{ye2026desi2euclid,
+  title   = {From DESI to Euclid: A Generative Bridge to Unbiased Galaxy Structures},
+  author  = {Ye, Renhao and Shen, Shiyin},
+  journal = {arXiv preprint arXiv:2607.06891},
+  year    = {2026},
+  eprint  = {2607.06891},
+  archivePrefix = {arXiv},
+  primaryClass  = {astro-ph.GA},
+  url     = {https://arxiv.org/abs/2607.06891}
 }
 ```
+
+The predicted Euclid-resolution BGS dataset (E-BGS) covering the Euclid DR1 footprint is released on Zenodo: [10.5281/zenodo.21032414](https://doi.org/10.5281/zenodo.21032414).
 
 ---
 

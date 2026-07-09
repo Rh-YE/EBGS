@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article below."
+title: EBGS
+authors:
+  - family-names: Ye
+    given-names: Renhao
+  - family-names: Shen
+    given-names: Shiyin
+license: MIT
+repository-code: "https://github.com/Rh-YE/EBGS"
+preferred-citation:
+  type: article
+  title: "From DESI to Euclid: A Generative Bridge to Unbiased Galaxy Structures"
+  authors:
+    - family-names: Ye
+      given-names: Renhao
+    - family-names: Shen
+      given-names: Shiyin
+  year: 2026
+  journal: "arXiv preprint arXiv:2607.06891"
+  identifiers:
+    - type: other
+      value: "arXiv:2607.06891"
+      description: "ArXiv ID"
+  url: "https://arxiv.org/abs/2607.06891"
