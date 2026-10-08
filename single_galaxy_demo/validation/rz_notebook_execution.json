@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "input_mode": "coordinates",
+  "input_bands": "rz",
+  "code_cells": 7,
+  "executed_code_cells": 7,
+  "error_outputs": 0,
+  "embedded_png_outputs": 1,
+  "elapsed_seconds": 12.480072736740112,
+  "runtime": "isolated Linux virtual environment, torch CPU build, CUDA_VISIBLE_DEVICES empty",
+  "folder_relocated": true,
+  "run_directory": "/data1/public/renhaoye/code/DESI2Euclid/tmp/single_galaxy_demo_build/coordinate_demo_rh3d8nz7/single_galaxy_demo",
+  "network_needed_for_inference": false,
+  "download_source": "validated cache from live official service download",
+  "output_fits": "outputs/desi_199.295557_+0.913561_rz_b70bc20f2612_cpu_fxl_8yk6/desi_199.295557_+0.913561_rz_b70bc20f2612_ebgs.fits"
+}

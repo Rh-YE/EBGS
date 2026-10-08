@@ -1,0 +1,42 @@
+{
+  "source_root": "/data1/public/renhaoye/code/DESI2Euclid",
+  "source_sha256": {
+    "sgm/util.py": "691f1443bbcc6917c0e5ec183f835b43d7f27979b7c9dad7531f13a18dd84b68",
+    "sgm/models/astreIR_SBn.py": "1d75c01fddf17d86fdb40c39fd9f7f85c686eca04184906e5992c80c698c83e0",
+    "sgm/modules/ema.py": "51f0a240a0fd3ac021277a189e5c2c8353218e1e29bbc1592b69afb48d8acab2",
+    "sgm/modules/attention.py": "4609c5e452e4978f6faf4b04071eeff29df6a530d5c9a5750cab19934ffe0f27",
+    "sgm/modules/diffusionmodules/openaimodel.py": "3685f372e0d395b4acd532fefdf177474b68a8c405af88f27da1e660b5a47349",
+    "sgm/modules/diffusionmodules/util.py": "15126de8ebbbe155d54329863e43a992984464b5999a520bd0ba1c29df187c9a",
+    "sgm/modules/autoencoding/lpips/model/model.py": "665e9b1f2b40aae68c3b0a78987dfe2aab16e5f72b1eb978866de77ea67a9dc1",
+    "sgm/modules/autoencoding/lpips/util.py": "5a6eaa7cf02ff58f3a7ac5373de5c8fe0c1437e050a19767272de5e253b98e47",
+    "sgm/transforms/pixel_stretch.py": "23b9fce61999a1ab22348f1243a3e3654c4dbd3ff74b375875a2d905de6ab930",
+    "sgm/modules/autoencoding/lpips/model/LICENSE": "baadde1667b52cf8eba03b80a95883ad204f71c0d135161a46df59f6a7a51f66",
+    "sgm/data/utils.py": "3f4a5e7385ee8d5b408ec0dc4e40f2e7ea88cb82d7af3c90f802cd1bb2f6f2f7",
+    "main.py": "0122d7f5a56f8e7bb484bbc5107aa8c2104be573ea3ec5bebb94000be6b8072b"
+  },
+  "adaptations": [
+    "Lightweight sgm __init__ files only; copied model implementation unchanged.",
+    "Resampling and arcsinh_rgb extracted verbatim using AST.",
+    "Runtime uses native torch softmax attention; EMA is folded into inference weights.",
+    "Image-only wrapper bypasses get_input and directly applies the original bandwise transform; no error-map input/output.",
+    "rz arrays retain the original r/z normalization slots via an unused g placeholder inside the wrapper. No placeholder is exposed or displayed.",
+    "Runtime config drops unused error-input key names; original model source and EMA weights remain unchanged.",
+    "Coordinate downloader uses the official Legacy Surveys viewer FITS endpoint, with format, image, WCS and cache validation; no extra sky or photometric transform.",
+    "Notebook defaults to coordinate mode and passes the downloaded path into the unchanged production preprocessing and center-crop inference.",
+    "Celestial WCS reads only spatial axes to support the viewer band-cube header without a redundant-axis warning."
+  ],
+  "interface_revision": "RA/Dec official FITS download linked to CPU notebook; image-only rz/grz and local FITS modes; 2026-10-08",
+  "coordinate_download": {
+    "endpoint": "https://www.legacysurvey.org/viewer/fits-cutout",
+    "documentation": "https://www.legacysurvey.org/dr10/description/",
+    "default_layer": "ls-dr10",
+    "size": 128,
+    "pixel_scale_arcsec": 0.262,
+    "bands": [
+      "rz",
+      "grz"
+    ],
+    "data_type": "sky-subtracted coadd IMAGE",
+    "coverage_check": "finite nonconstant images; reject exact-zero pixels conservatively; not a full exposure-coverage audit"
+  }
+}

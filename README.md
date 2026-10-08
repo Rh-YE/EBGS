@@ -2,6 +2,27 @@
 
 EBGS translates ground-based [DESI Legacy Survey](https://www.legacysurvey.org/) galaxy images into synthetic [Euclid](https://www.esa.int/Science_Exploration/Space_Science/Euclid) VIS-band images using an Image-to-Image Schrödinger Bridge (I2SB) diffusion model.
 
+
+---
+
+## Single-galaxy demo (CPU or GPU)
+
+The self-contained [single-galaxy notebook](single_galaxy_demo/single_galaxy_demo.ipynb) downloads a DESI cutout from RA/Dec or reads a local `rz` / `grz` FITS, then generates one central **12.8 arcsec, 128 × 128 pixel** EBGS image without stitching. CPU inference is the default; no error-map input is needed, and the output FITS contains only the generated image and its WCS.
+
+The folder includes inference source code, the final EMA weights, example FITS, dependency installation, and an executed notebook. See the [demo README](single_galaxy_demo/README.md) for setup, input conventions, and validation records. The weights use [Git LFS](https://git-lfs.com/):
+
+```bash
+git lfs install
+git clone https://github.com/Rh-YE/EBGS.git
+cd EBGS
+git lfs pull
+cd single_galaxy_demo
+```
+
+Then follow the demo README to create a Python environment, run `python install.py`, and open the notebook. Set `RA`, `DEC`, and `INPUT_BANDS` (`"grz"` or `"rz"`) in its first code cell. New coordinates require internet access; cached cutouts and local FITS can run offline after installation.
+
+The demo was checked in an isolated Linux CPU environment using real downloaded cutouts, including identical results for matching r/z data through both input modes. These checks establish software consistency, not independent validation of the generated galaxy structure.
+
 ---
 
 ## Method

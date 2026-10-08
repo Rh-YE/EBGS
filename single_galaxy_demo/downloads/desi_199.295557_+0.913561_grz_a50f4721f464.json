@@ -1,0 +1,24 @@
+{
+  "request": {
+    "ra": 199.2955574,
+    "dec": 0.913561334,
+    "layer": "ls-dr10",
+    "bands": "grz",
+    "pixscale": 0.262,
+    "size": 128
+  },
+  "url": "https://www.legacysurvey.org/viewer/fits-cutout?ra=199.2955574&dec=0.913561334&layer=ls-dr10&bands=grz&pixscale=0.262&size=128",
+  "upstream_sha256": "4981c043eb7091cdc64152effb6a5f8c0f5f9fe4ea4c5d8c79853f6c5469d43c",
+  "upstream_bytes": 201600,
+  "file_sha256": "1324fedf480fdb798f53083c46080f65453a0050806e259f5456d7703abb09c2",
+  "downloaded_utc": "2026-10-08T04:26:24.265147+00:00",
+  "shape": [
+    3,
+    128,
+    128
+  ],
+  "center_error_arcsec": 2.361561850986662e-11,
+  "preprocessing": "Official sky-subtracted coadd IMAGE; flux pixels unchanged.",
+  "coverage_check": "Finite, nonconstant images; reject any exact-zero pixel conservatively.",
+  "documentation": "https://www.legacysurvey.org/dr10/description/"
+}

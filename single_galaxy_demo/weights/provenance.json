@@ -1,0 +1,15 @@
+{
+  "source_checkpoint": "logs/2026-06-01T20-48-48_generation-astroIR_SBn/checkpoints/best.ckpt",
+  "source_checkpoint_sha256": "788dbab951dd7f127aaada1f142191deaa52151708cb69c99da5ea456bd7bcb8",
+  "epoch": 332,
+  "global_step": 86580,
+  "inference_weights": "weights/best_ema.safetensors",
+  "inference_weights_sha256": "204604ff4a519a773ab177622d61f9181b815c37fa34e3759457846f4b85e58a",
+  "inference_weights_bytes": 129668236,
+  "tensor_count": 427,
+  "dtype": "float32",
+  "ema_applied": true,
+  "ema_tensor_equality_verified": true,
+  "strict_load_verified": true,
+  "removed": "optimizer, scheduler, training loops, non-EMA parameter copy; no inference tensors quantized"
+}

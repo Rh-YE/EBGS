@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "input_mode": "coordinates",
+  "input_bands": "grz",
+  "code_cells": 7,
+  "executed_code_cells": 7,
+  "error_outputs": 0,
+  "embedded_png_outputs": 1,
+  "elapsed_seconds": 10.58744839951396,
+  "runtime": "isolated Linux virtual environment, torch CPU build, CUDA_VISIBLE_DEVICES empty",
+  "folder_relocated": false,
+  "run_directory": "/data1/public/renhaoye/code/DESI2Euclid/single_galaxy_demo",
+  "network_needed_for_inference": false,
+  "download_source": "validated cache from live official service download",
+  "output_fits": "outputs/desi_199.295557_+0.913561_grz_a50f4721f464_cpu_7rttsw8w/desi_199.295557_+0.913561_grz_a50f4721f464_ebgs.fits"
+}

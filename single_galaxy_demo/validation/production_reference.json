@@ -1,0 +1,16 @@
+{
+  "seconds": 4.996844116598368,
+  "shape": [
+    128,
+    128
+  ],
+  "torch": "2.8.0+cu128",
+  "finite": true,
+  "source_model": "/data1/public/renhaoye/code/DESI2Euclid/sgm/models/astreIR_SBn.py",
+  "seed": 1024,
+  "samples": 3,
+  "nfe": 10,
+  "dtype": "float32",
+  "attention": "native torch softmax",
+  "numpy": "1.26.3"
+}

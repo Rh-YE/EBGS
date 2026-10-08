@@ -50,3 +50,8 @@ Thumbs.db
 # Credentials / secrets
 .env
 *.key
+
+# Demo runtime files; bundled examples are explicitly tracked.
+single_galaxy_demo/.cache/
+single_galaxy_demo/downloads/
+single_galaxy_demo/outputs/

@@ -1,0 +1,58 @@
+{
+  "input_file": "desi_199.295557_+0.913561_grz_a50f4721f464.fits",
+  "input_sha256": "1324fedf480fdb798f53083c46080f65453a0050806e259f5456d7703abb09c2",
+  "input_bands": "grz",
+  "input_shape": [
+    3,
+    128,
+    128
+  ],
+  "resampled_shape": [
+    3,
+    335,
+    335
+  ],
+  "crop_yx": [
+    103,
+    103
+  ],
+  "output_shape": [
+    128,
+    128
+  ],
+  "input_pixel_scale_arcsec": 0.262,
+  "output_pixel_scale_arcsec": 0.1,
+  "field_arcsec": 12.8,
+  "wcs_available": true,
+  "preprocessing": "production fast area-average; center crop; apply_zp_conv=False",
+  "device": "cpu",
+  "dtype": "float32",
+  "attention": "torch softmax SDPA",
+  "seed": 1024,
+  "num_samples": 3,
+  "nfe": 10,
+  "split_ratio": 0.7,
+  "ema": true,
+  "stitch": false,
+  "cpu_threads": 4,
+  "inference_seconds": 4.69469690695405,
+  "torch_version": "2.8.0+cpu",
+  "numpy_version": "2.2.6",
+  "weights": {
+    "source_checkpoint": "logs/2026-06-01T20-48-48_generation-astroIR_SBn/checkpoints/best.ckpt",
+    "source_checkpoint_sha256": "788dbab951dd7f127aaada1f142191deaa52151708cb69c99da5ea456bd7bcb8",
+    "epoch": 332,
+    "global_step": 86580,
+    "inference_weights": "weights/best_ema.safetensors",
+    "inference_weights_sha256": "204604ff4a519a773ab177622d61f9181b815c37fa34e3759457846f4b85e58a",
+    "inference_weights_bytes": 129668236,
+    "tensor_count": 427,
+    "dtype": "float32",
+    "ema_applied": true,
+    "ema_tensor_equality_verified": true,
+    "strict_load_verified": true,
+    "removed": "optimizer, scheduler, training loops, non-EMA parameter copy; no inference tensors quantized"
+  },
+  "load_seconds": 2.0671653635799885,
+  "output_sha256": "64413dcc1b6a8fe9f906a412f44a1fb2110a8382febbe10366063c1e2a672288"
+}

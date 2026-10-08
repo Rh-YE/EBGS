@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "live_downloads": {
+    "grz": {
+      "file": "desi_199.295557_+0.913561_grz_a50f4721f464.fits",
+      "upstream_url": "https://www.legacysurvey.org/viewer/fits-cutout?ra=199.2955574&dec=0.913561334&layer=ls-dr10&bands=grz&pixscale=0.262&size=128",
+      "upstream_sha256": "4981c043eb7091cdc64152effb6a5f8c0f5f9fe4ea4c5d8c79853f6c5469d43c",
+      "file_sha256": "1324fedf480fdb798f53083c46080f65453a0050806e259f5456d7703abb09c2",
+      "shape": [
+        3,
+        128,
+        128
+      ]
+    },
+    "rz": {
+      "file": "desi_199.295557_+0.913561_rz_b70bc20f2612.fits",
+      "upstream_url": "https://www.legacysurvey.org/viewer/fits-cutout?ra=199.2955574&dec=0.913561334&layer=ls-dr10&bands=rz&pixscale=0.262&size=128",
+      "upstream_sha256": "14c5a01ffe3a227b46487a4d924cc6447546b571e911c13891909a1985ce4385",
+      "file_sha256": "c6f38ba42d2d8083985c3b977186fab0951374454fa733421bd5d664de7f03eb",
+      "shape": [
+        2,
+        128,
+        128
+      ]
+    }
+  },
+  "downloaded_rz_equals_grz_rz_channels": true,
+  "html_and_truncated_response_rejected": true,
+  "wrong_bands_or_center_rejected": true,
+  "invalid_coordinates_rejected": true,
+  "nonfinite_and_zero_filled_images_rejected": true,
+  "valid_cache_reused_without_network": true,
+  "corrupt_cache_rejected_without_overwrite": true,
+  "failure_leaves_no_fits_or_staging_files": true,
+  "all_checks_offline_against_actual_downloads_and_mock_responses": true
+}

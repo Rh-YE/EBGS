@@ -1,0 +1,104 @@
+model:
+  base_learning_rate: 1.0e-05
+  target: sgm.models.astreIR_SBn.MultiModalSBDiffusion
+  params:
+    use_i2sb: true
+    interval: 500
+    beta_max: 0.15
+    ot_ode: false
+    clip_denoise: false
+    nfe: 10
+    log_count: 10
+    x1_mode: rz
+    desi_bands: 2
+    det_loss_type: chi2
+    det_loss_reduction: mean
+    use_ema: false
+    ema_decay: 0.999
+    input_key_euclid: euclid_img
+    input_key_desi: desi_img
+    pixel_transform_config:
+      target: sgm.transforms.pixel_stretch.BandwiseArcsinhTransform
+      params:
+        euclid:
+          lower_bound:
+          - -0.015434673279337585
+          upper_bound:
+          - 2.0928584933740315
+          bg_median:
+          - 0.00031603622
+          bg_std:
+          - 0.017898018
+        desi:
+          lower_bound:
+          - -0.004908290165057406
+          - -0.0067522825711406765
+          - -0.02320259420014918
+          upper_bound:
+          - 9.20013931569946
+          - 10.000000953674316
+          - 10.00001049041748
+          bg_median:
+          - 0.0001529879
+          - 0.00022485493
+          - 0.0005653821
+          bg_std:
+          - 0.06832892
+          - 0.11801922
+          - 0.13742818
+    heteroscedastic: false
+    hetero_cond_channel: false
+    snr_eps: 0.001
+    w_clamp_min: 0.1
+    w_clamp_max: 10.0
+    sb_loss_type: mse
+    sb_huber_delta: 1.0
+    sb_bright_weight: 0.0
+    adversarial: false
+    disc_in_channels: 1
+    disc_ndf: 32
+    disc_n_layers: 2
+    disc_use_actnorm: false
+    adv_weight: 0.01
+    disc_loss_type: hinge
+    adv_start_step: 50000
+    network_config:
+      target: sgm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        use_checkpoint: false
+        out_channels: 1
+        model_channels: 64
+        attention_resolutions:
+        - 16
+        - 8
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 4
+        - 4
+        num_head_channels: 32
+        transformer_depth: 1
+        spatial_transformer_attn_type: softmax
+        num_classes: null
+    optimizer_config:
+      target: torch.optim.AdamW
+      params:
+        lr: 0.0001
+        betas:
+        - 0.9
+        - 0.999
+        weight_decay: 1.0e-05
+    scheduler_config:
+      target: sgm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps:
+        - 1000
+        cycle_lengths:
+        - 100000
+        f_start:
+        - 1.0e-06
+        f_max:
+        - 1.0
+        f_min:
+        - 0.1

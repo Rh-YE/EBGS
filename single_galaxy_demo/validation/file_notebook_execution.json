@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "input_mode": "file",
+  "input_bands": "auto",
+  "code_cells": 7,
+  "executed_code_cells": 7,
+  "error_outputs": 0,
+  "embedded_png_outputs": 1,
+  "elapsed_seconds": 10.96028645709157,
+  "runtime": "isolated Linux virtual environment, torch CPU build, CUDA_VISIBLE_DEVICES empty",
+  "folder_relocated": false,
+  "run_directory": "/data1/public/renhaoye/code/DESI2Euclid/single_galaxy_demo",
+  "network_needed_for_inference": false,
+  "download_source": null,
+  "output_fits": "outputs/1-10166_cpu_cmla_yc0/1-10166_ebgs.fits"
+}
