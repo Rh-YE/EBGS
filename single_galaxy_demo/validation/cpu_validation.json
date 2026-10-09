@@ -9,9 +9,9 @@
   "xformers_installed": false,
   "device": "cpu",
   "threads": 4,
-  "inference_seconds": 5.136006694287062,
-  "rz_inference_seconds": 4.7749740816652775,
-  "validation_seconds": 11.946158055216074,
+  "inference_seconds": 4.848675724118948,
+  "rz_inference_seconds": 4.633562248200178,
+  "validation_seconds": 13.374255068600178,
   "output_shape": [
     128,
     128
@@ -55,5 +55,5 @@
   "input_sha256": "e973c7f5d668dc28c6c1e2625a787ceba6e47d63e8cb06fef76c72b6eed0dda3",
   "weights_sha256": "204604ff4a519a773ab177622d61f9181b815c37fa34e3759457846f4b85e58a",
   "caveat": "Measured on this Linux CPU; not a laptop benchmark or scientific truth validation.",
-  "process_peak_rss_mib": 838.68359375
+  "process_peak_rss_mib": 727.3125
 }

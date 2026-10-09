@@ -1,16 +1,16 @@
 # ---------------------------------------------------------------
-# pixel_stretch.py — 通用像素值非线性拉伸框架
+# pixel_stretch.py — General framework for nonlinear pixel-value transforms
 #
-# 用于在 I2SB 训练前压缩天文图像的动态范围，使得不同亮度
-# 的像素在 MSE 损失中有可比的贡献。
+# Compress astronomical-image dynamic range before I2SB training so that
+# pixels with different brightnesses contribute comparably to the MSE loss.
 #
-# 设计原则：
-#   1. 所有波段共享同一个 scale（归一化常数）
-#   2. a（softening / 转折点）可按 Euclid / DESI 分别设置
-#   3. forward / inverse 必须严格互逆
-#   4. transform_error 通过解析 Jacobian 自动传播
+# Design principles:
+#   1. All bands share the same scale normalization constant.
+#   2. Set a (softening / transition scale) separately for Euclid and DESI.
+#   3. forward and inverse must be mutually inverse.
+#   4. transform_error propagates errors using the analytic Jacobian.
 #
-# 使用方式（YAML）：
+# YAML usage:
 #   pixel_transform:
 #     target: sgm.transforms.pixel_stretch.SqrtTransform
 #     params:
@@ -18,13 +18,13 @@
 #       a_desi: 0.001
 #       x_max: 10.0
 #
-#   target 设为 IdentityTransform 即关闭拉伸，回退到原始行为。
+#   Set target to IdentityTransform to disable stretching and restore the original behavior.
 #
-# 架构：
-#   BasePixelTransform (抽象基类)
-#     ├── forward(x, source) → x_norm      正变换
-#     ├── inverse(x_norm, source) → x      反变换
-#     └── transform_error(err, x, source)  误差传播
+# Architecture:
+#   BasePixelTransform, the abstract base class
+#     ├── forward(x, source) → x_norm      Forward transform
+#     ├── inverse(x_norm, source) → x      Inverse transform
+#     └── transform_error(err, x, source)  Error propagation
 #          │
 #     ┌────┼────────┬───────────┬──────────┐
 #     ▼    ▼        ▼           ▼          ▼
@@ -44,27 +44,27 @@ logpy = logging.getLogger(__name__)
 
 class BasePixelTransform(ABC):
     """
-    像素值非线性变换的抽象基类。
+    Abstract base class for nonlinear pixel-value transforms.
 
-    子类需实现三个静态方法：
-        _forward_np  : numpy 正变换（用于预处理脚本）
-        _inverse_np  : numpy 反变换
-        _jacobian_np : 正变换对 x 的导数 df/dx（用于误差传播）
+    Subclasses implement three static methods:
+        _forward_np: NumPy forward transform for preprocessing scripts
+        _inverse_np: NumPy inverse transform
+        _jacobian_np: Derivative df/dx for error propagation
 
-    本基类自动提供 torch 版本的 forward / inverse / transform_error，
-    以及 numpy 版本的便捷接口。
+    The base class provides torch forward / inverse / transform_error methods
+    and convenience interfaces for NumPy arrays.
 
-    参数
+    Parameters
     ----------
     a_euclid : float
-        Euclid 图像的 softening 参数。
+        Softening parameter for Euclid images.
     a_desi : float
-        DESI 图像的 softening 参数。
+        Softening parameter for DESI images.
     x_max : float
-        用于计算归一化常数 scale，使 forward(x_max) ≈ 1.0。
+        Reference value used to calculate scale so forward(x_max) ≈ 1.0.
     scale : float or None
-        若指定，则直接使用该值作为归一化常数（忽略 x_max）。
-        多波段 / 多数据源必须共用同一个 scale。
+        Explicit normalization constant, overriding x_max when supplied.
+        All bands and data sources must share the same scale.
     """
 
 
@@ -74,15 +74,15 @@ class BasePixelTransform(ABC):
         a_desi: float = 0.001,
         x_max: float = 10.0,
         scale: Optional[float] = None,
-        # [EXT-NORM] 变换域统计量（由测量脚本在 forward 后直接 mean/std 得到）
+        # [EXT-NORM] Transformed-space statistics measured directly with mean/std after forward.
         norm_mean_transformed_euclid: Optional[float] = None,
         norm_std_transformed_euclid: Optional[float] = None,
         norm_mean_transformed_desi: Optional[float] = None,
         norm_std_transformed_desi: Optional[float] = None,
-        # [VMAX-ALIGN] 拉伸前在 *原始空间* 对像素做对称 clip，
-        # 强制 t=0 (Euclid) 与 t=T (DESI) 的最大值严格一致，
-        # 解决"凸组合 μ_t 在亮源处把核心拉低"问题（残差中间帧出现暗斑）。
-        # None = 不 clip（旧行为）。建议设为某个 percentile 上界 (e.g. 99.9%)。
+        # [VMAX-ALIGN] Symmetrically clip pixels in the original space before stretching.
+        # This aligns maximum values at t=0 (Euclid) and t=T (DESI),
+        # addressing depressed bright cores in the convex combination μ_t and dark intermediate residuals.
+        # None disables clipping, preserving the old behavior; a percentile bound such as 99.9% can be used.
         clip_x_max_euclid: Optional[float] = None,
         clip_x_max_desi: Optional[float] = None,
         clip_x_min_euclid: Optional[float] = None,
@@ -98,7 +98,7 @@ class BasePixelTransform(ABC):
         self._clip_max = {"euclid": clip_x_max_euclid, "desi": clip_x_max_desi}
         self._clip_min = {"euclid": clip_x_min_euclid, "desi": clip_x_min_desi}
 
-        # [EXT-NORM] 存储变换域统计量；不做任何 Jacobian 传播
+        # [EXT-NORM] Store transformed-space statistics without Jacobian propagation.
         self._norm: Dict[str, Optional[Tuple[float, float]]] = {"euclid": None, "desi": None}
         for src, mu_t, sig_t in [
             ("euclid", norm_mean_transformed_euclid, norm_std_transformed_euclid),
@@ -111,85 +111,85 @@ class BasePixelTransform(ABC):
                     )
                 self._norm[src] = (float(mu_t), float(sig_t))
                 logpy.info(
-                    f"[标准化/{src}] 使用变换域统计量: "
+                    f"[Normalization/{src}] Using transformed-space statistics: "
                     f"mu_t={mu_t:.6f}, sigma_t={sig_t:.6f}"
                 )
             elif (mu_t is None) != (sig_t is None):
                 raise ValueError(
-                    f"[{src}] norm_mean 和 norm_std 必须同时提供或同时为 None"
+                    f"[{src}] norm_mean and norm_std must both be supplied or both be None."
                 )
             else:
-                logpy.info(f"[标准化/{src}] 未配置，normalize/denormalize 将为恒等操作")
+                logpy.info(f"[Normalization/{src}] Not configured; normalize/denormalize will be identity operations.")
 
         logpy.info(
-            f"[像素拉伸] {self.__class__.__name__}: "
+            f"[Pixel transform] {self.__class__.__name__}: "
             f"a_euclid={a_euclid}, a_desi={a_desi}, "
             f"x_max={x_max}, scale={self.scale:.6f}"
         )
     def _get_a(self, source: str) -> float:
-        """根据数据来源返回对应的 a 参数。"""
+        "Return the softening parameter a for the specified data source."
         if source == "euclid":
             return self.a_euclid
         elif source == "desi":
             return self.a_desi
         else:
-            raise ValueError(f"未知数据来源 source='{source}'，应为 'euclid' 或 'desi'")
+            raise ValueError(f"Unknown source='{source}'; expected 'euclid' or 'desi'.")
 
     # ----------------------------------------------------------
-    # 子类必须实现的方法
+    # Methods that subclasses must implement
     # ----------------------------------------------------------
 
     @abstractmethod
     def _compute_scale(self, x_max: float, a: float) -> float:
-        """从 x_max 和 a 计算归一化常数。"""
+        "Calculate the normalization constant from x_max and a."
         ...
 
     @staticmethod
     @abstractmethod
     def _forward_np(x: np.ndarray, a: float, scale: float) -> np.ndarray:
-        """numpy 正变换：原始 → 变换域。"""
+        "NumPy forward transform from original to transformed space."
         ...
 
     @staticmethod
     @abstractmethod
     def _inverse_np(y: np.ndarray, a: float, scale: float) -> np.ndarray:
-        """numpy 反变换：变换域 → 原始。"""
+        "NumPy inverse transform from transformed to original space."
         ...
 
     @staticmethod
     @abstractmethod
     def _jacobian_np(x: np.ndarray, a: float, scale: float) -> np.ndarray:
-        """正变换对 x 的导数 df/dx（numpy 版，用于误差传播）。"""
+        "NumPy derivative df/dx of the forward transform for error propagation."
         ...
 
     # ----------------------------------------------------------
-    # torch 版本（自动从 numpy 版本派生）
+    # Torch implementations derived from the NumPy versions
     # ----------------------------------------------------------
 
     @staticmethod
     @abstractmethod
     def _forward_torch(x: torch.Tensor, a: float, scale: float) -> torch.Tensor:
-        """torch 正变换。"""
+        "Torch forward transform."
         ...
 
     @staticmethod
     @abstractmethod
     def _inverse_torch(y: torch.Tensor, a: float, scale: float) -> torch.Tensor:
-        """torch 反变换。"""
+        "Torch inverse transform."
         ...
 
     @staticmethod
     @abstractmethod
     def _jacobian_torch(x: torch.Tensor, a: float, scale: float) -> torch.Tensor:
-        """torch 导数。"""
+        "Torch derivative."
         ...
 
     # ----------------------------------------------------------
-    # 公共接口（numpy）
+    # Public NumPy interface
     # ----------------------------------------------------------
 
     def _clip_raw_np(self, x: np.ndarray, source: str) -> np.ndarray:
-        """[VMAX-ALIGN] 原始空间对称 clip：在拉伸前限制 |x| 上下界。"""
+        "[VMAX-ALIGN] Symmetric clipping in original space before stretching."
         lo = self._clip_min.get(source)
         hi = self._clip_max.get(source)
         if lo is None and hi is None:
@@ -204,52 +204,52 @@ class BasePixelTransform(ABC):
         return x.clamp(min=lo, max=hi)
 
     def forward_np(self, x: np.ndarray, source: str) -> np.ndarray:
-        """正变换（numpy 版）。source = 'euclid' 或 'desi'。"""
+        "NumPy forward transform; source is 'euclid' or 'desi'."
         x = self._clip_raw_np(x, source)
         return self._forward_np(x, self._get_a(source), self.scale)
 
     def inverse_np(self, y: np.ndarray, source: str) -> np.ndarray:
-        """反变换（numpy 版）。"""
+        "NumPy inverse transform."
         return self._inverse_np(y, self._get_a(source), self.scale)
 
     def transform_error_np(self, err: np.ndarray, x: np.ndarray, source: str) -> np.ndarray:
         """
-        误差传播（numpy 版）。
+        NumPy error propagation.
 
-        σ_transformed = |df/dx| · σ_original
+        σ_transformed = |df/dx| * σ_original
 
-        参数
+        Parameters
         ----------
-        err : 原始误差 σ
-        x   : 原始像素值（用于计算 Jacobian）
+        err : Original uncertainty σ.
+        x : Original pixel values at which to evaluate the Jacobian.
         """
         jac = self._jacobian_np(x, self._get_a(source), self.scale)
         return np.abs(jac) * err
 
     # ----------------------------------------------------------
-    # 公共接口（torch）
+    # Public torch interface
     # ----------------------------------------------------------
 
     def forward(self, x: torch.Tensor, source: str) -> torch.Tensor:
-        """正变换（torch 版）。source = 'euclid' 或 'desi'。"""
+        "Torch forward transform; source is 'euclid' or 'desi'."
         x = self._clip_raw_torch(x, source)
         return self._forward_torch(x, self._get_a(source), self.scale)
 
     def inverse(self, y: torch.Tensor, source: str) -> torch.Tensor:
-        """反变换（torch 版）。"""
+        "Torch inverse transform."
         return self._inverse_torch(y, self._get_a(source), self.scale)
 
     def transform_error(self, err: torch.Tensor, x: torch.Tensor, source: str) -> torch.Tensor:
-        """误差传播（torch 版）。σ_transformed = |df/dx| · σ_original"""
+        "Torch error propagation: σ_transformed = |df/dx| * σ_original."
         jac = self._jacobian_torch(x, self._get_a(source), self.scale)
         return jac.abs() * err
     
     def _get_norm(self, source: str) -> Optional[Tuple[float, float]]:
-        """返回变换域的 (mu, sigma)，若未配置则返回 None。"""
+        "Return transformed-space (mu, sigma), or None if not configured."
         return self._norm.get(source)
 
     def normalize(self, y: torch.Tensor, source: str) -> torch.Tensor:
-        """标准化：在变换域执行 (y - mu) / sigma。"""
+        "Normalize in transformed space: (y - mu) / sigma."
         ns = self._get_norm(source)
         if ns is None:
             return y
@@ -257,7 +257,7 @@ class BasePixelTransform(ABC):
         return (y - mu) / sigma
 
     def denormalize(self, y_norm: torch.Tensor, source: str) -> torch.Tensor:
-        """反标准化：y * sigma + mu。"""
+        "Denormalize: y * sigma + mu."
         ns = self._get_norm(source)
         if ns is None:
             return y_norm
@@ -265,14 +265,14 @@ class BasePixelTransform(ABC):
         return y_norm * sigma + mu
 
 # ============================================================
-# 具体实现
+# Concrete implementations
 # ============================================================
 
 class IdentityTransform(BasePixelTransform):
     """
-    恒等变换（不做任何拉伸）。
+    Identity transform without pixel stretching.
 
-    用途：关闭像素拉伸，完全回退到原始 I2SB 行为。
+    Use this to disable stretching and recover the original I2SB behavior.
     """
 
     def _compute_scale(self, x_max: float, a: float) -> float:
@@ -305,17 +305,18 @@ class IdentityTransform(BasePixelTransform):
 
 class ArcsinhTransform(BasePixelTransform):
     """
-    arcsinh 拉伸：天文学标准动态范围压缩。
+    Arcsinh stretching for astronomical-image dynamic-range compression.
 
-    正变换：f(x) = arcsinh(x / a) / scale
-    反变换：f⁻¹(y) = a · sinh(y · scale)
-    导数：  df/dx = 1 / (sqrt(x² + a²) · scale)
+    Forward: f(x) = arcsinh(x / a) / scale
+    Inverse: f⁻¹(y) = a * sinh(y * scale)
+    Derivative: df/dx = 1 / (sqrt(x² + a²) * scale)
 
-    特性：
-    - 奇函数，天然处理 BGSUB 后的负值
-    - |x| << a 时近似线性（保留噪声统计）
-    - |x| >> a 时近似对数（压缩高端）
-    - a 控制线性→对数的转折点，建议设为背景噪声 RMS 附近
+    Properties:
+    - Odd function that naturally handles negative sky-subtracted values.
+    - Approximately linear for |x| << a, preserving noise statistics.
+    - Approximately logarithmic for |x| >> a, compressing bright pixels.
+    - a controls the linear-to-logarithmic transition; a value near the
+      background noise standard deviation is a suggested starting point.
     """
 
     def _compute_scale(self, x_max, a):
@@ -348,17 +349,18 @@ class ArcsinhTransform(BasePixelTransform):
 
 class SqrtTransform(BasePixelTransform):
     """
-    sqrt 拉伸：泊松噪声的方差稳定化变换 (Anscombe)。
+    Square-root stretching: an Anscombe-type transform for Poisson noise.
 
-    正变换：f(x) = sign(x) · sqrt(|x| + a) / scale
-    反变换：f⁻¹(y) = sign(y) · ((|y| · scale)² − a)
-    导数：  df/dx = 1 / (2 · sqrt(|x| + a) · scale)
+    Forward: f(x) = sign(x) * sqrt(|x| + a) / scale
+    Inverse: f⁻¹(y) = sign(y) * ((|y| * scale)² - a)
+    Derivative: df/dx = 1 / (2 * sqrt(|x| + a) * scale)
 
-    特性：
-    - 对泊松噪声主导的数据，变换后噪声方差近似均匀
-    - 压缩力度中等（比 arcsinh 弱，比 identity 强）
-    - 噪声放大温和（~6x vs arcsinh 的 ~12x）
-    - a 防止 x=0 处导数发散，建议 0.0001 ~ 0.01
+    Properties described by the original implementation:
+    - Approximately stabilizes variance when Poisson noise dominates.
+    - Moderate compression, between identity and arcsinh.
+    - Reported noise amplification of about 6x versus about 12x for arcsinh;
+      these values depend on the data and transform parameters.
+    - a prevents a divergent derivative at x=0; suggested range: 0.0001–0.01.
     """
 
     def _compute_scale(self, x_max, a):
@@ -391,22 +393,22 @@ class SqrtTransform(BasePixelTransform):
 
 class LuptonTransform(BasePixelTransform):
     """
-    Lupton+2004 拉伸：SDSS 彩色图像标准方法。
+    Lupton et al. (2004) stretching, used for SDSS color images.
 
-    正变换：f(x) = arcsinh(Q · x / a) / (Q · scale)
-    反变换：f⁻¹(y) = a · sinh(y · Q · scale) / Q
-    导数：  df/dx = 1 / (sqrt((Q·x)² + a²) · scale)
+    Forward: f(x) = arcsinh(Q * x / a) / (Q * scale)
+    Inverse: f⁻¹(y) = a * sinh(y * Q * scale) / Q
+    Derivative: df/dx = 1 / (sqrt((Q*x)² + a²) * scale)
 
-    特性：
-    - 本质是 arcsinh 的参数化版本
-    - Q 独立控制压缩激进程度（Q 大→压缩强），与 a 解耦
-    - Q=1 退化为标准 arcsinh
-    - 适合需要精细调控压缩强度的场景
+    Properties:
+    - A parameterized form of arcsinh stretching.
+    - Q controls compression strength independently of a; larger Q is stronger.
+    - Q=1 recovers ordinary arcsinh stretching.
+    - Useful when finer control of compression strength is needed.
 
-    参数
+    Parameters
     ----------
     Q : float
-        压缩强度参数。Q=8 压缩很强，Q=2 温和。
+        Compression parameter; Q=8 is strong, Q=2 is milder.
     """
 
     def __init__(self, Q: float = 8.0, **kwargs):
@@ -429,7 +431,7 @@ class LuptonTransform(BasePixelTransform):
     def _jacobian_np_inner(x, a, scale, Q):
         return 1.0 / (np.sqrt((Q * x) ** 2 + a ** 2) * scale)
 
-    # 由于 Lupton 多一个 Q 参数，需要覆盖公共接口
+    # Override the public interface to handle the extra Lupton parameter Q.
     def forward_np(self, x, source):
         a = self._get_a(source)
         x = self._clip_raw_np(x, source)
@@ -458,53 +460,53 @@ class LuptonTransform(BasePixelTransform):
         jac = 1.0 / (torch.sqrt((self.Q * x) ** 2 + a ** 2) * self.scale)
         return jac.abs() * err
 
-    # 基类抽象方法的占位实现（实际通过上面的覆盖接口调用）
+    # Placeholders for abstract methods; use the overridden public methods above.
     @staticmethod
     def _forward_np(x, a, scale):
-        raise NotImplementedError("使用 forward_np 代替")
+        raise NotImplementedError("Use forward_np instead.")
 
     @staticmethod
     def _inverse_np(y, a, scale):
-        raise NotImplementedError("使用 inverse_np 代替")
+        raise NotImplementedError("Use inverse_np instead.")
 
     @staticmethod
     def _jacobian_np(x, a, scale):
-        raise NotImplementedError("使用 transform_error_np 代替")
+        raise NotImplementedError("Use transform_error_np instead.")
 
     @staticmethod
     def _forward_torch(x, a, scale):
-        raise NotImplementedError("使用 forward 代替")
+        raise NotImplementedError("Use forward instead.")
 
     @staticmethod
     def _inverse_torch(y, a, scale):
-        raise NotImplementedError("使用 inverse 代替")
+        raise NotImplementedError("Use inverse instead.")
 
     @staticmethod
     def _jacobian_torch(x, a, scale):
-        raise NotImplementedError("使用 transform_error 代替")
+        raise NotImplementedError("Use transform_error instead.")
 
 
 class BandwiseArcsinhTransform:
     """
-    逐波段标准化 arcsinh 拉伸，对应 stretch() 函数的完整流程。
+    Per-band normalized arcsinh stretching, matching the complete stretch() pipeline.
 
-    每个波段独立地做：
+    Each band is processed independently:
         1. clip(x, lower_bound[c], upper_bound[c])
         2. out = arcsinh((clipped - bg_median[c]) / bg_std[c])
-        3. 线性归一化到 [-1, 1]：
+        3. Linearly normalize to [-1, 1]:
                vmin[c] = arcsinh((lower_bound[c] - bg_median[c]) / bg_std[c])
                vmax[c] = arcsinh((upper_bound[c] - bg_median[c]) / bg_std[c])
                out_norm[c] = (out[c] - vmin[c]) / (vmax[c] - vmin[c]) * 2 - 1
 
-    反变换：
+    Inverse:
         out[c] = (y + 1) / 2 * (vmax[c] - vmin[c]) + vmin[c]
         x[c]   = sinh(out[c]) * bg_std[c] + bg_median[c]
 
-    Jacobian（误差传播）：
+    Jacobian for error propagation:
         d(out_norm)/dx = 1/bg_std[c] / sqrt(((x-bg_median[c])/bg_std[c])^2 + 1)
                          * 2 / (vmax[c] - vmin[c])
 
-    YAML 示例：
+    YAML example:
         pixel_transform_config:
           target: sgm.transforms.pixel_stretch.BandwiseArcsinhTransform
           params:
@@ -546,13 +548,13 @@ class BandwiseArcsinhTransform:
         return self._params[source]
 
     def _broadcast_np(self, arr: np.ndarray, vec: np.ndarray) -> np.ndarray:
-        """将形如 (C,) 的逐通道参数广播到 (C, H, W) 或 (1, H, W)。"""
+        "Broadcast per-channel parameters of shape (C,) to (C, H, W) or (1, H, W)."
         c = arr.shape[0]
         if len(vec) == 1:
             return vec[0]
         if len(vec) != c:
             raise ValueError(
-                f"参数通道数 {len(vec)} 与图像通道数 {c} 不匹配"
+                f"Parameter channel count {len(vec)} does not match image channel count {c}."
             )
         return vec.reshape(-1, *([1] * (arr.ndim - 1)))
 
@@ -563,7 +565,7 @@ class BandwiseArcsinhTransform:
             return t
         if t.numel() != c:
             raise ValueError(
-                f"参数通道数 {t.numel()} 与图像通道数 {c} 不匹配"
+                f"Parameter channel count {t.numel()} does not match image channel count {c}."
             )
         # (C,) → (1, C, 1, 1) for BCHW or (C, 1, 1) for CHW
         if x.ndim == 4:
@@ -571,7 +573,7 @@ class BandwiseArcsinhTransform:
         return t.view(-1, 1, 1)
 
     # ------------------------------------------------------------------
-    # numpy 公共接口
+    # Public NumPy interface
     # ------------------------------------------------------------------
 
     def forward_np(self, x: np.ndarray, source: str) -> np.ndarray:
@@ -608,7 +610,7 @@ class BandwiseArcsinhTransform:
         return np.abs(jac) * err
 
     # ------------------------------------------------------------------
-    # torch 公共接口（与 BasePixelTransform 兼容的接口名）
+    # Public torch interface with method names compatible with BasePixelTransform
     # ------------------------------------------------------------------
 
     def forward(self, x: torch.Tensor, source: str) -> torch.Tensor:
@@ -645,7 +647,7 @@ class BandwiseArcsinhTransform:
         return jac.abs() * err
 
     # ------------------------------------------------------------------
-    # normalize / denormalize — 变换已到 [-1, 1]，无需额外统计量
+    # normalize / denormalize: values are already in [-1, 1]; no additional statistics are needed.
     # ------------------------------------------------------------------
 
     def _get_norm(self, source: str):
@@ -660,17 +662,18 @@ class BandwiseArcsinhTransform:
 
 class PowerTransform(BasePixelTransform):
     """
-    幂律拉伸：f(x) = sign(x) · |x|^γ / scale。
+    Power-law stretching: f(x) = sign(x) * |x|^γ / scale.
 
-    特性：
-    - γ < 1 压缩高端（γ=0.5 即 sqrt，γ=0.25 压缩更强）
-    - 压缩最激进，但导数在 x=0 处发散 → 噪声放大严重
-    - a 在此作为数值稳定项：实际计算 (|x| + a)^γ
+    Properties:
+    - γ < 1 compresses bright values; γ=0.5 gives a square root, γ=0.25 is stronger.
+    - Strong compression, but the unregularized derivative diverges at x=0,
+      leading to substantial noise amplification.
+    - a provides numerical regularization: the implementation uses (|x| + a)^γ.
 
-    参数
+    Parameters
     ----------
     gamma : float
-        幂指数，< 1 压缩高端。
+        Power-law exponent; values below 1 compress the bright end.
     """
 
     def __init__(self, gamma: float = 0.25, **kwargs):
@@ -683,8 +686,8 @@ class PowerTransform(BasePixelTransform):
 
     @staticmethod
     def _forward_np(x, a, scale):
-        # 注意：gamma 通过闭包或类属性传入
-        raise NotImplementedError("使用 forward_np 代替")
+        # gamma is supplied through a closure or class attribute.
+        raise NotImplementedError("Use forward_np instead.")
 
     @staticmethod
     def _inverse_np(y, a, scale):

@@ -5,19 +5,19 @@ _OVERLAP_CACHE = {}
 
 def center_crop(image, position, target_size):
     """
-    裁剪函数基本保持不变，但确保 position 传入的是从 get_crop_position 得到的浮点数
+    Crop using the floating-point position returned by get_crop_position.
     """
-    # 这里的 position 是 (y, x) 格式
+    # position is supplied in (y, x) order.
     if image.ndim == 2:
-        # Cutout2D 内部会处理 (y, x) 或 (x, y) 顺序，
-        # 注意：Cutout2D(data, position, size) 中 position 默认是 (x, y)
-        # 如果你的 get_crop_position 返回的是 (h_pos, w_pos)，这里需要反转
+        # Convert the supplied coordinate order for Cutout2D.
+        # Cutout2D(data, position, size) expects position in (x, y) order.
+        # Reverse a (h_pos, w_pos) result from get_crop_position here.
         cutout_pos = (position[1], position[0]) 
         
         cutout = Cutout2D(image, cutout_pos, target_size, mode='partial', fill_value=0)
         return cutout.data
     
-    # 多通道处理
+    # Process multiple channels.
     cutout_data = []
     cutout_pos = (position[1], position[0])
     for i in range(image.shape[0]):
@@ -27,28 +27,28 @@ def center_crop(image, position, target_size):
 
 def get_crop_position(image, target_h, target_w, random_crop=False, current_pos=None):
     """
-    获取裁剪位置
-    
+    Get the crop position.
+
     Args:
-        image: 输入图像
-        target_h: 目标高度
-        target_w: 目标宽度
-        random_crop: 是否随机裁剪（使用高斯分布）
-        current_pos: 已有位置（如果提供则直接返回）
+        image: Input image.
+        target_h: Target height.
+        target_w: Target width.
+        random_crop: Whether to draw a random crop from a Gaussian distribution.
+        current_pos: Existing position, returned directly when provided.
     """
     if current_pos is not None:
         return current_pos
     
-    # 关键修改：获取物理几何中心（浮点数）
+    # Use the geometric center as floating-point coordinates.
     img_h, img_w = image.shape[-2], image.shape[-1]
     center_h = (img_h - 1) / 2.0
     center_w = (img_w - 1) / 2.0
     
     if not random_crop:
-        # 返回精确的浮点中心，确保 128 和 91 的逻辑一致
+        # Return the exact floating-point center consistently for sizes 128 and 91.
         return (center_h, center_w)
     
-    # 随机裁剪逻辑
+    # Random crop selection.
     min_h, max_h = target_h / 2.0, img_h - target_h / 2.0
     min_w, max_w = target_w / 2.0, img_w - target_w / 2.0
     
@@ -75,14 +75,16 @@ def convert_invvar_zeropoint(invvar_data, from_zp=30, to_zp=22.5):
 
 def _overlap_matrix(n_in, n_out, scale):
     """
-    行/列方向的面积重叠权重矩阵 (n_out, n_in),行归一化 → 面积平均
-    (surface brightness),复现 reproject_exact 默认语义。
+    Area-overlap weights along rows/columns, shape (n_out, n_in).
+    Row normalization gives an area average (surface brightness), matching
+    the default semantics of reproject_exact.
 
-    对齐约定:两网格物理中心重合(与合成 WCS 的 CRPIX=(N+1)/2 一致),
-    FITS 像素 i(0-based)中心在坐标 i,覆盖 [i-0.5, i+0.5]。
+    Alignment: both grids share a physical center, consistent with the
+    synthetic WCS CRPIX=(N+1)/2. A zero-based FITS pixel i is centered at i
+    and covers [i-0.5, i+0.5].
 
-    scale = to_pixel_scale / from_pixel_scale(输出像素跨多少输入像素,
-    过采样时 < 1)。
+    scale = to_pixel_scale / from_pixel_scale: the width of an output pixel
+    in input-pixel units; less than 1 when oversampling.
     """
     center_in = (n_in - 1) / 2.0
     center_out = (n_out - 1) / 2.0
@@ -101,13 +103,14 @@ def _overlap_matrix(n_in, n_out, scale):
 def _reproj_fast(img_data, apply_zp_conv, from_zp, to_zp, is_invvar,
                  from_pixel_scale, to_pixel_scale):
     """
-    可分离面积加权重采样,见上方说明。img_data: (C,H,W)。
+    Separable area-weighted resampling; see above. img_data has shape (C,H,W).
 
-    权重矩阵在 f64 下构造(裁剪/归一化精度),但缓存为 f32 并用 BLAS
-    sgemm(np.matmul)做两次重采样:
+    Weights are constructed in f64 for clipping/normalization precision,
+    then cached in f32. Two BLAS sgemm operations (np.matmul) resample the image:
         out = Wr @ x @ WcT    # (Ho,Hi)@(C,Hi,Wi)@(Wi,Wo) -> (C,Ho,Wo)
-    f32 matmul 比 f64 einsum 快 ~6x,与 f64 路径数值差 ~5e-8(纯舍入,
-    远小于与 reproject_exact 的 ~6e-4 残差)。
+    The original implementation reports f32 matmul as about 6x faster than
+    f64 einsum, with rounding differences of about 5e-8, much smaller than
+    the approximately 6e-4 residual relative to reproject_exact.
     """
     c, h_in, w_in = img_data.shape
     sf = from_pixel_scale / to_pixel_scale
@@ -117,7 +120,7 @@ def _reproj_fast(img_data, apply_zp_conv, from_zp, to_zp, is_invvar,
     key = (h_in, h_out, w_in, w_out, scale)
     wmats = _OVERLAP_CACHE.get(key)
     if wmats is None:
-        # f64 构造 → f32 缓存;列矩阵预转置为 (w_in, w_out) 供右乘
+        # Construct in f64 and cache in f32; transpose column weights to (w_in, w_out) for right multiplication.
         Wr = _overlap_matrix(h_in, h_out, scale).astype(np.float32)      # (Ho, Hi)
         WcT = _overlap_matrix(w_in, w_out, scale).T.copy().astype(np.float32)  # (Wi, Wo)
         _OVERLAP_CACHE[key] = wmats = (Wr, WcT)

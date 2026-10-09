@@ -98,7 +98,7 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
             #         image_only_indicator,
             #     )
             if isinstance(module, TimestepBlock):
-                x = layer(x, emb)          # ResBlock 等需要 emb 的层
+                x = layer(x, emb)          # Layers such as ResBlock that require emb.
             elif isinstance(module, SpatialTransformer):
                 x = layer(x, context)
             else:
@@ -341,7 +341,7 @@ class ResBlock(TimestepBlock):
             emb_out = th.zeros_like(h)
         else:
             emb_out = self.emb_layers(emb).type(h.dtype)
-        while len(emb_out.shape) < len(h.shape): # 调整embedding的形状然后保证最后能加到h上
+        while len(emb_out.shape) < len(h.shape): # Reshape the embedding so it can be added to h.
             emb_out = emb_out[..., None]
         if self.use_scale_shift_norm:
             out_norm, out_rest = self.out_layers[0], self.out_layers[1:]
@@ -472,96 +472,101 @@ class Timestep(nn.Module):
 
 class UNetModel(nn.Module):
     """
-    带有注意力机制和时间步嵌入的完整UNet模型。
-    :param in_channels: 输入Tensor的通道数。
-    :param model_channels: 模型的基础通道数。
-    :param out_channels: 输出Tensor的通道数。
-    :param num_res_blocks: 每个降采样阶段的残差块数量。
-    :param attention_resolutions: 在哪些降采样率下进行注意力机制操作。可以是集合、列表或元组。
-        例如，如果包含4，则在4倍降采样时使用注意力机制。
-    :param dropout: dropout概率。
-    :param channel_mult: UNet每个层级的通道倍增数。
-    :param conv_resample: 如果为True，则使用卷积进行上采样和下采样。
-    :param dims: 决定信号是1D，2D还是3D。
-    :param num_classes: 如果指定（如整数），则此模型将是带有`num_classes`类别的类条件模型。
-    :param use_checkpoint: 使用梯度检查点以减少内存使用。
-    :param num_heads: 每个注意力层中的注意力头数。
-    :param num_heads_channels: 如果指定，则忽略num_heads，而是使用每个注意力头的固定通道宽度。
-    :param num_heads_upsample: 配合num_heads设置上采样的头数。已弃用。
-    :param use_scale_shift_norm: 使用类似FiLM的调节机制。
-    :param resblock_updown: 使用残差块进行上采样/下采样。
-    :param use_new_attention_order: 使用不同的注意力模式以潜在提高效率。
+    Full UNet with attention and timestep embeddings.
+
+    :param in_channels: Number of input tensor channels.
+    :param model_channels: Base channel count.
+    :param out_channels: Number of output tensor channels.
+    :param num_res_blocks: Residual blocks per downsampling stage.
+    :param attention_resolutions: Downsampling factors at which to apply
+        attention, as a set, list, or tuple. Including 4 enables attention
+        at a downsampling factor of 4.
+    :param dropout: Dropout probability.
+    :param channel_mult: Channel multipliers at each UNet level.
+    :param conv_resample: Use convolution for up/downsampling when True.
+    :param dims: Signal dimensionality: 1D, 2D, or 3D.
+    :param num_classes: If specified as an integer, enable class conditioning
+        with this number of classes.
+    :param use_checkpoint: Use gradient checkpointing to reduce memory use.
+    :param num_heads: Number of attention heads per attention layer.
+    :param num_head_channels: Fixed width per attention head, overriding
+        num_heads when specified.
+    :param num_heads_upsample: Attention heads during upsampling; deprecated.
+    :param use_scale_shift_norm: Use FiLM-style modulation.
+    :param resblock_updown: Use residual blocks for up/downsampling.
+    :param use_new_attention_order: Alternative attention ordering that may
+        improve efficiency.
     """
 
     def __init__(
         self,
-        in_channels: int,  # 输入通道数
-        model_channels: int,  # 模型通道数
-        out_channels: int,  # 输出通道数
-        num_res_blocks: int,  # 每层的残差块数量
-        attention_resolutions: int,  # 注意力机制的分辨率
-        dropout: float = 0.0,  # dropout概率
-        channel_mult: Union[List, Tuple] = (1, 2, 4, 8),  # 通道倍增系数
-        conv_resample: bool = True,  # 是否使用卷积重采样
-        dims: int = 2,  # 信号维度（1D, 2D, 3D）
-        num_classes: Optional[Union[int, str]] = None,  # 类别数量
-        use_checkpoint: bool = False,  # 是否使用梯度检查点
-        num_heads: int = -1,  # 注意力头数量
-        num_head_channels: int = -1,  # 每个注意力头的通道数
-        num_heads_upsample: int = -1,  # 上采样时的注意力头数量（已弃用）
-        use_scale_shift_norm: bool = False,  # 是否使用Scale-Shift归一化
-        resblock_updown: bool = False,  # 是否使用残差块进行上/下采样
-        transformer_depth: int = 1,  # Transformer的深度
-        context_dim: Optional[int] = None,  # 上下文维度
-        disable_self_attentions: Optional[List[bool]] = None,  # 禁用自注意力机制
-        num_attention_blocks: Optional[List[int]] = None,  # 注意力块数量
-        disable_middle_self_attn: bool = False,  # 禁用中间自注意力机制
-        disable_middle_transformer: bool = False,  # 禁用中间Transformer
-        use_linear_in_transformer: bool = False,  # 是否在线性Transformer中使用线性变换
-        spatial_transformer_attn_type: str = "softmax",  # 空间Transformer的注意力类型
-        adm_in_channels: Optional[int] = None,  # ADM输入通道数
+        in_channels: int,  # Input channels
+        model_channels: int,  # Base model channels
+        out_channels: int,  # Output channels
+        num_res_blocks: int,  # Residual blocks per level
+        attention_resolutions: int,  # Attention resolutions
+        dropout: float = 0.0,  # Dropout probability
+        channel_mult: Union[List, Tuple] = (1, 2, 4, 8),  # Channel multipliers
+        conv_resample: bool = True,  # Use convolutional resampling
+        dims: int = 2,  # Signal dimensionality: 1D, 2D, or 3D
+        num_classes: Optional[Union[int, str]] = None,  # Number of classes
+        use_checkpoint: bool = False,  # Use gradient checkpointing
+        num_heads: int = -1,  # Number of attention heads
+        num_head_channels: int = -1,  # Channels per attention head
+        num_heads_upsample: int = -1,  # Attention heads during upsampling; deprecated
+        use_scale_shift_norm: bool = False,  # Use scale-shift normalization
+        resblock_updown: bool = False,  # Use residual blocks for up/downsampling
+        transformer_depth: int = 1,  # Transformer depth
+        context_dim: Optional[int] = None,  # Context dimension
+        disable_self_attentions: Optional[List[bool]] = None,  # Disable self-attention
+        num_attention_blocks: Optional[List[int]] = None,  # Number of attention blocks
+        disable_middle_self_attn: bool = False,  # Disable middle-block self-attention
+        disable_middle_transformer: bool = False,  # Disable the middle transformer
+        use_linear_in_transformer: bool = False,  # Use linear projection in the spatial transformer
+        spatial_transformer_attn_type: str = "softmax",  # Spatial-transformer attention type
+        adm_in_channels: Optional[int] = None,  # ADM input channels
     ):
         super().__init__()
 
-        # 如果未指定num_heads_upsample，则使用num_heads的值
+        # Default num_heads_upsample to num_heads when unspecified.
         if num_heads_upsample == -1:
             num_heads_upsample = num_heads
 
-        # 确保num_heads和num_head_channels其中之一被设置
+        # Require either num_heads or num_head_channels.
         if num_heads == -1:
             assert (
                 num_head_channels != -1
-            ), "必须设置num_heads或num_head_channels其中之一"
+            ), "Either num_heads or num_head_channels must be set."
 
         if num_head_channels == -1:
             assert (
                 num_heads != -1
-            ), "必须设置num_heads或num_head_channels其中之一"
+            ), "Either num_heads or num_head_channels must be set."
 
-        self.in_channels = in_channels  # 输入通道数
-        self.model_channels = model_channels  # 模型通道数
-        self.out_channels = out_channels  # 输出通道数
+        self.in_channels = in_channels  # Input channels
+        self.model_channels = model_channels  # Base model channels
+        self.out_channels = out_channels  # Output channels
 
-        # 如果transformer_depth是整数，则将其扩展为与channel_mult相同长度的列表
+        # Expand an integer transformer_depth to match the length of channel_mult.
         if isinstance(transformer_depth, int):
             transformer_depth = len(channel_mult) * [transformer_depth]
-        transformer_depth_middle = transformer_depth[-1]  # 中间层的transformer深度
+        transformer_depth_middle = transformer_depth[-1]  # Transformer depth in the middle block.
 
-        # 如果num_res_blocks是整数，则将其扩展为与channel_mult相同长度的列表
+        # Expand an integer num_res_blocks to match the length of channel_mult.
         if isinstance(num_res_blocks, int):
             self.num_res_blocks = len(channel_mult) * [num_res_blocks]
         else:
             if len(num_res_blocks) != len(channel_mult):
                 raise ValueError(
-                    "num_res_blocks应该是一个整数（全局一致）或与channel_mult相同长度的列表"
+                    "num_res_blocks must be an integer shared across levels or a list matching the length of channel_mult."
                 )
             self.num_res_blocks = num_res_blocks
 
-        # 检查disable_self_attentions的长度是否正确
+        # Check the length of disable_self_attentions.
         if disable_self_attentions is not None:
             assert len(disable_self_attentions) == len(channel_mult)
 
-        # 检查num_attention_blocks的长度是否正确
+        # Check the length of num_attention_blocks.
         if num_attention_blocks is not None:
             assert len(num_attention_blocks) == len(self.num_res_blocks)
             assert all(
@@ -571,23 +576,23 @@ class UNetModel(nn.Module):
                 )
             )
             logpy.info(
-                f"UNetModel构造函数接收到num_attention_blocks={num_attention_blocks}。"
-                f"此选项优先级低于attention_resolutions {attention_resolutions}，"
-                f"即如果num_attention_blocks[i] > 0但2**i不在attention_resolutions中，"
-                f"仍然不会设置注意力机制。"
+                f"UNetModel received num_attention_blocks={num_attention_blocks}. "
+                f"This setting has lower priority than attention_resolutions={attention_resolutions}: "
+                f"if num_attention_blocks[i] > 0 but 2**i is absent from attention_resolutions, "
+                f"attention is still disabled at that level."
             )
 
-        self.attention_resolutions = attention_resolutions  # 注意力机制的分辨率
-        self.dropout = dropout  # dropout概率
-        self.channel_mult = channel_mult  # 通道倍增系数
-        self.conv_resample = conv_resample  # 是否使用卷积重采样
-        self.num_classes = num_classes  # 类别数量
-        self.use_checkpoint = use_checkpoint  # 是否使用梯度检查点
-        self.num_heads = num_heads  # 注意力头数量
-        self.num_head_channels = num_head_channels  # 每个注意力头的通道数
-        self.num_heads_upsample = num_heads_upsample  # 上采样时的注意力头数量
+        self.attention_resolutions = attention_resolutions  # Attention resolutions
+        self.dropout = dropout  # Dropout probability
+        self.channel_mult = channel_mult  # Channel multipliers
+        self.conv_resample = conv_resample  # Use convolutional resampling
+        self.num_classes = num_classes  # Number of classes
+        self.use_checkpoint = use_checkpoint  # Use gradient checkpointing
+        self.num_heads = num_heads  # Number of attention heads
+        self.num_head_channels = num_head_channels  # Channels per attention head
+        self.num_heads_upsample = num_heads_upsample  # Attention heads during upsampling
 
-        # 时间步嵌入维度
+        # Timestep embedding dimension
         time_embed_dim = model_channels * 4
         self.time_embed = nn.Sequential(
             linear(model_channels, time_embed_dim),
@@ -595,12 +600,12 @@ class UNetModel(nn.Module):
             linear(time_embed_dim, time_embed_dim),
         )
 
-        # 类别嵌入层
+        # Class embedding layer
         if self.num_classes is not None:
             if isinstance(self.num_classes, int):
                 self.label_emb = nn.Embedding(num_classes, time_embed_dim)
             elif self.num_classes == "continuous":
-                logpy.info("设置线性c_adm嵌入层")
+                logpy.info("Setting up a linear c_adm embedding layer")
                 self.label_emb = nn.Linear(1, time_embed_dim)
             elif self.num_classes == "timestep":
                 self.label_emb = nn.Sequential(
@@ -623,7 +628,7 @@ class UNetModel(nn.Module):
             else:
                 raise ValueError
 
-        # 输入块
+        # Input blocks
         self.input_blocks = nn.ModuleList(
             [
                 TimestepEmbedSequential(
@@ -631,12 +636,12 @@ class UNetModel(nn.Module):
                 )
             ]
         )
-        self._feature_size = model_channels  # 特征大小
-        input_block_chans = [model_channels]  # 输入块通道列表
-        ch = model_channels  # 当前通道数
-        ds = 1  # 当前降采样率
+        self._feature_size = model_channels  # Feature size
+        input_block_chans = [model_channels]  # Input-block channel list
+        ch = model_channels  # Current channel count
+        ds = 1  # Current downsampling factor
 
-        # 构建每层的残差块和注意力块
+        # Build residual and attention blocks at each level.
         for level, mult in enumerate(channel_mult):
             for nr in range(self.num_res_blocks[level]):
                 layers = [
@@ -708,7 +713,7 @@ class UNetModel(nn.Module):
                 ds *= 2
                 self._feature_size += ch
 
-        # 中间块
+        # Middle block
         if num_head_channels == -1:
             dim_head = ch // num_heads
         else:
@@ -749,7 +754,7 @@ class UNetModel(nn.Module):
         )
         self._feature_size += ch
 
-        # 输出块
+        # Output blocks
         self.output_blocks = nn.ModuleList([])
         for level, mult in list(enumerate(channel_mult))[::-1]:
             for i in range(self.num_res_blocks[level] + 1):
@@ -815,7 +820,7 @@ class UNetModel(nn.Module):
                 self.output_blocks.append(TimestepEmbedSequential(*layers))
                 self._feature_size += ch
 
-        # 最终输出层
+        # Final output layer
         self.out = nn.Sequential(
             normalization(ch),
             nn.SiLU(),
@@ -824,37 +829,38 @@ class UNetModel(nn.Module):
 
     def forward(
         self,
-        x: th.Tensor,  # 输入Tensor
-        timesteps: Optional[th.Tensor] = None,  # 时间步Tensor
-        context: Optional[th.Tensor] = None,  # 上下文Tensor
-        y: Optional[th.Tensor] = None,  # 类别标签
+        x: th.Tensor,  # Input tensor
+        timesteps: Optional[th.Tensor] = None,  # Timestep tensor
+        context: Optional[th.Tensor] = None,  # Context tensor
+        y: Optional[th.Tensor] = None,  # Class labels
         **kwargs,
     ) -> th.Tensor:
         """
-        将模型应用于输入批次。
-        :param x: [N x C x ...]形状的输入Tensor。
-        :param timesteps: 一维的时间步批次。
-        :param context: 通过交叉注意力提供的条件
-        :param y: [N]形状的标签，如果是类条件模型。
-        :return: [N x C x ...]形状的输出Tensor。
+        Apply the model to an input batch.
+
+        :param x: Input tensor with shape [N x C x ...].
+        :param timesteps: One-dimensional batch of timesteps.
+        :param context: Conditioning supplied through cross-attention.
+        :param y: Labels with shape [N] for a class-conditioned model.
+        :return: Output tensor with shape [N x C x ...].
         """
         assert (y is not None) == (
             self.num_classes is not None
-        ), "如果且仅当模型是类条件时，必须指定y"
+        ), "y must be specified if and only if the model is class-conditioned."
         hs = []
-        t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False) # tiesteps是时间步t，t_emb是时间步嵌入
-        emb = self.time_embed(t_emb) # 生成更高维、更具表达能力的嵌入向量 emb
+        t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False) # timesteps contains t; t_emb is its timestep embedding.
+        emb = self.time_embed(t_emb) # Project to a higher-dimensional, more expressive embedding emb.
 
-        if self.num_classes is not None: # 如果需要嵌入类别信息，在这里接在embedding后面
+        if self.num_classes is not None: # Add class information to the embedding when required.
             assert y.shape[0] == x.shape[0]
             emb = emb + self.label_emb(y)
 
         h = x
-        for module in self.input_blocks: # UNet下采样
+        for module in self.input_blocks: # UNet downsampling
             h = module(h, emb, context)
             hs.append(h)
-        h = self.middle_block(h, emb, context) # UNet中间块
-        for module in self.output_blocks: # UNet上采样
+        h = self.middle_block(h, emb, context) # UNet middle block
+        for module in self.output_blocks: # UNet upsampling
             h = th.cat([h, hs.pop()], dim=1)
             h = module(h, emb, context)
         h = h.type(x.dtype)

@@ -37,16 +37,16 @@ def _request(ra, dec, bands, layer):
     try:
         ra, dec = float(ra), float(dec)
     except (TypeError, ValueError) as exc:
-        raise ValueError("RA、Dec 必须是 ICRS 十进制度数。") from exc
+        raise ValueError("RA and Dec must be ICRS coordinates in decimal degrees.") from exc
     if not math.isfinite(ra) or not 0 <= ra < 360:
-        raise ValueError("RA 必须满足 0 <= RA < 360 度。")
+        raise ValueError("RA must satisfy 0 <= RA < 360 degrees.")
     if not math.isfinite(dec) or not -90 <= dec <= 90:
-        raise ValueError("Dec 必须在 [-90, 90] 度内。")
+        raise ValueError("Dec must be in [-90, 90] degrees.")
     bands = str(bands).lower().replace(",", "").replace(" ", "")
     if bands not in {"rz", "grz"}:
-        raise ValueError("bands 必须为 'rz' 或 'grz'。")
+        raise ValueError("bands must be 'rz' or 'grz'.")
     if layer not in LAYERS:
-        raise ValueError(f"layer 必须为 {LAYERS} 之一。")
+        raise ValueError(f"layer must be one of {LAYERS}.")
     return dict(ra=ra, dec=dec, layer=layer, bands=bands,
                 pixscale=PIXEL_SCALE, size=SIZE)
 
@@ -54,60 +54,60 @@ def _request(ra, dec, bands, layer):
 def _inspect(hdul, request):
     hdul.verify("exception")
     if len(hdul) != 1 or hdul[0].data is None:
-        raise ValueError("服务没有返回单个图像主 HDU。")
+        raise ValueError("The service did not return a single image primary HDU.")
     data = np.array(hdul[0].data, dtype=np.float32)
     header = hdul[0].header.copy()
     expected = (len(request["bands"]), SIZE, SIZE)
     if data.shape != expected:
-        raise ValueError(f"裁图形状 {data.shape} 与所需 {expected} 不一致，可能缺少波段。")
+        raise ValueError(f"Cutout shape {data.shape} does not match {expected}; bands may be missing.")
     if header.get("IMAGETYP", "").strip().upper() != "IMAGE":
-        raise ValueError("响应不是观测图像 IMAGE。")
+        raise ValueError("The response is not a coadd IMAGE.")
     declared = str(header.get("BANDS", "")).replace(",", "").replace(" ", "").lower()
     if declared != request["bands"]:
-        raise ValueError(f"返回波段 {declared!r} 与请求不一致。")
+        raise ValueError(f"Returned bands {declared!r} do not match the request.")
     for i, band in enumerate(declared):
         if str(header.get(f"BAND{i}", "")).strip().lower() != band:
-            raise ValueError("FITS 的逐通道波段信息不一致。")
+            raise ValueError("The FITS per-channel band metadata are inconsistent.")
     for band, plane in zip(declared, data):
         if not np.isfinite(plane).all():
-            raise ValueError(f"{band} 波段包含 NaN/Inf，不能作为完整推理输入。")
+            raise ValueError(f"Band {band} contains NaN/Inf and cannot provide a complete inference input.")
         # The image-only viewer may encode unobserved regions as exact zeros.
         # Be conservative: do not turn zero-filled gaps into inferred sources.
         if np.any(plane == 0):
-            raise ValueError(f"{band} 波段含零值，无法排除无覆盖区域；此裁图不送入推理。")
+            raise ValueError(f"Band {band} contains zeros; unobserved regions cannot be ruled out. This cutout will not be used for inference.")
         if float(np.ptp(plane)) == 0:
-            raise ValueError(f"{band} 波段为常数图像，可能没有有效观测。")
+            raise ValueError(f"Band {band} is constant and may lack valid observations.")
     wcs = WCS(header, naxis=2).celestial
     if not wcs.has_celestial or wcs.has_distortion:
-        raise ValueError("裁图需要无畸变的天球 WCS。")
+        raise ValueError("The cutout must have celestial WCS without distortion.")
     scales = proj_plane_pixel_scales(wcs) * 3600
     if not np.allclose(scales, PIXEL_SCALE, rtol=1e-6, atol=1e-8):
-        raise ValueError(f"裁图像素尺度异常：{scales}。")
+        raise ValueError(f"Unexpected cutout pixel scales: {scales}.")
     center = wcs.pixel_to_world((SIZE - 1) / 2, (SIZE - 1) / 2)
     wanted = SkyCoord(request["ra"], request["dec"], unit="deg", frame="icrs")
     separation = float(center.separation(wanted).arcsec)
     if separation > 1e-4:
-        raise ValueError(f"裁图中心偏离请求坐标 {separation:.6g} arcsec。")
+        raise ValueError(f"The cutout center is offset from the requested coordinates by {separation:.6g} arcsec.")
     for hdu in hdul:
         if "CHECKSUM" in hdu.header and hdu.verify_checksum() != 1:
-            raise ValueError("FITS CHECKSUM 校验失败。")
+            raise ValueError("FITS CHECKSUM verification failed.")
         if "DATASUM" in hdu.header and hdu.verify_datasum() != 1:
-            raise ValueError("FITS DATASUM 校验失败。")
+            raise ValueError("FITS DATASUM verification failed.")
     return data, header, separation
 
 
 def _decode(payload, request):
     if not payload.startswith(b"SIMPLE  ="):
-        raise ValueError("服务返回的不是 FITS（可能无覆盖或返回 HTML 错误页）。")
+        raise ValueError("The service did not return FITS; the target may lack coverage or the response may be an HTML error page.")
     if len(payload) % 2880:
-        raise ValueError("FITS 下载不完整：字节数不是 2880 的整数倍。")
+        raise ValueError("Incomplete FITS download: the byte count is not a multiple of 2880.")
     # Check the declared length before checksum verification reads the pixels.
     # _inspect verifies any CHECKSUM/DATASUM after this truncation guard.
     with fits.open(io.BytesIO(payload), memmap=False, checksum=False) as hdul:
         # Astropy may warn and still expose a truncated file: reject explicitly.
         end = hdul.fileinfo(0)["datLoc"] + hdul.fileinfo(0)["datSpan"]
         if len(payload) < end:
-            raise ValueError("FITS 图像数据被截断。")
+            raise ValueError("The FITS image data are truncated.")
         return _inspect(hdul, request)
 
 
@@ -121,7 +121,7 @@ def download_cutout(ra, dec, *, bands="grz", output_dir=None, layer="ls-dr10", t
     request = _request(ra, dec, bands, layer)
     timeout = float(timeout)
     if not math.isfinite(timeout) or timeout <= 0:
-        raise ValueError("timeout 必须是正数（秒）。")
+        raise ValueError("timeout must be positive, in seconds.")
     directory = ROOT / "downloads" if output_dir is None else Path(output_dir)
     directory.mkdir(parents=True, exist_ok=True)
     identity = hashlib.sha256(json.dumps(request, sort_keys=True).encode()).hexdigest()[:12]
@@ -132,10 +132,10 @@ def download_cutout(ra, dec, *, bands="grz", output_dir=None, layer="ls-dr10", t
 
     if path.exists() or sidecar.exists():
         if not path.is_file() or not sidecar.is_file():
-            raise FileExistsError(f"本地下载记录不完整，请使用另一个 output_dir：{path}")
+            raise FileExistsError(f"The local download record is incomplete; use another output_dir: {path}")
         info = json.loads(sidecar.read_text(encoding="utf-8"))
         if info.get("request") != request or info.get("file_sha256") != _sha256(path):
-            raise ValueError(f"缓存参数或校验值不符，不复用也不覆盖：{path}")
+            raise ValueError(f"Cache parameters or checksum do not match; the file will not be reused or overwritten: {path}")
         with fits.open(path, memmap=False, checksum=True) as hdul:
             _inspect(hdul, request)
         return path
@@ -145,7 +145,7 @@ def download_cutout(ra, dec, *, bands="grz", output_dir=None, layer="ls-dr10", t
         with lock.open("x") as stream:
             stream.write(str(os.getpid()))
     except FileExistsError as exc:
-        raise FileExistsError(f"相同裁图正在下载（或遗留锁文件）：{lock}") from exc
+        raise FileExistsError(f"The same cutout is being downloaded, or a stale lock remains: {lock}") from exc
     staging = []
     try:
         with requests.Session() as session:
@@ -159,13 +159,13 @@ def download_cutout(ra, dec, *, bands="grz", output_dir=None, layer="ls-dr10", t
                 for block in response.iter_content(65536):
                     total += len(block)
                     if total > 4 * 1024 * 1024:
-                        raise ValueError("128x128 裁图响应异常过大。")
+                        raise ValueError("The response is unexpectedly large for a 128x128 cutout.")
                     blocks.append(block)
                 payload = b"".join(blocks)
                 size_header = response.headers.get("Content-Length")
                 if size_header and not response.headers.get("Content-Encoding"):
                     if len(payload) != int(size_header):
-                        raise ValueError("下载字节数与 HTTP Content-Length 不一致。")
+                        raise ValueError("The downloaded byte count does not match HTTP Content-Length.")
                 source_url = response.url
         data, header, center_error = _decode(payload, request)
         upstream_sha = hashlib.sha256(payload).hexdigest()
@@ -202,12 +202,12 @@ def download_cutout(ra, dec, *, bands="grz", output_dir=None, layer="ls-dr10", t
             json.dump(info, f, indent=2, ensure_ascii=False)
             f.write("\n")
         if path.exists() or sidecar.exists():
-            raise FileExistsError(f"下载期间出现同名文件，不覆盖：{path}")
+            raise FileExistsError(f"A file with the same name appeared during download; refusing to overwrite: {path}")
         os.replace(temp_fits, path)
         os.replace(temp_json, sidecar)
         return path
     except requests.RequestException as exc:
-        raise RuntimeError("官方裁图下载失败，请检查网络、服务状态或目标覆盖。") from exc
+        raise RuntimeError("The official cutout download failed. Check the network, service status, and target coverage.") from exc
     finally:
         for file in staging:
             file.unlink(missing_ok=True)

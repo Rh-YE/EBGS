@@ -173,7 +173,7 @@ def instantiate_from_config(config):
         elif config == "__is_unconditional__":
             return None
         raise KeyError("Expected key `target` to instantiate.")
-    return get_obj_from_str(config["target"])(**config.get("params", dict())) # 第一个括号内的是类名，第二个括号内的是参数
+    return get_obj_from_str(config["target"])(**config.get("params", dict())) # The first parentheses contain the class name; the second contain its parameters.
 
 
 def get_obj_from_str(string, reload=False, invalidate_cache=True):

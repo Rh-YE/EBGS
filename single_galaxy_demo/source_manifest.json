@@ -15,17 +15,17 @@
     "main.py": "0122d7f5a56f8e7bb484bbc5107aa8c2104be573ea3ec5bebb94000be6b8072b"
   },
   "adaptations": [
-    "Lightweight sgm __init__ files only; copied model implementation unchanged.",
-    "Resampling and arcsinh_rgb extracted verbatim using AST.",
+    "Lightweight sgm __init__ files; copied model numerical implementation unchanged. Comments, docstrings, and runtime messages are translated into English.",
+    "Resampling and arcsinh_rgb were extracted using AST; resampling comments and docstrings are translated into English without changing numerical operations.",
     "Runtime uses native torch softmax attention; EMA is folded into inference weights.",
     "Image-only wrapper bypasses get_input and directly applies the original bandwise transform; no error-map input/output.",
     "rz arrays retain the original r/z normalization slots via an unused g placeholder inside the wrapper. No placeholder is exposed or displayed.",
-    "Runtime config drops unused error-input key names; original model source and EMA weights remain unchanged.",
+    "Runtime config drops unused error-input key names; model numerical operations and EMA weights remain unchanged.",
     "Coordinate downloader uses the official Legacy Surveys viewer FITS endpoint, with format, image, WCS and cache validation; no extra sky or photometric transform.",
     "Notebook defaults to coordinate mode and passes the downloaded path into the unchanged production preprocessing and center-crop inference.",
     "Celestial WCS reads only spatial axes to support the viewer band-cube header without a redundant-axis warning."
   ],
-  "interface_revision": "RA/Dec official FITS download linked to CPU notebook; image-only rz/grz and local FITS modes; 2026-10-08",
+  "interface_revision": "English documentation and runtime messages; RA/Dec downloads and image-only rz/grz CPU notebook; 2026-10-09",
   "coordinate_download": {
     "endpoint": "https://www.legacysurvey.org/viewer/fits-cutout",
     "documentation": "https://www.legacysurvey.org/dr10/description/",
@@ -38,5 +38,63 @@
     ],
     "data_type": "sky-subtracted coadd IMAGE",
     "coverage_check": "finite nonconstant images; reject exact-zero pixels conservatively; not a full exposure-coverage audit"
+  },
+  "source_hash_note": "source_sha256 records the original upstream source files before packaging and language changes. SHA256SUMS records the delivered files.",
+  "language_revision": {
+    "date": "2026-10-09",
+    "language": "English",
+    "scope": "All bundled documentation, comments, docstrings, and runtime messages.",
+    "numerical_implementation_unchanged": true,
+    "translated_python_files": {
+      "download_cutout.py": {
+        "original_bundle_sha256": "ac77e3aca816a77fbb4473f3daefb35d9c3d1473a126bc4400bede045031380a",
+        "english_bundle_sha256": "2e0cf2a9256997725042779a02eb4e8db36f9f337b72be505aa83b0127ac3a30",
+        "translated_tokens": 29,
+        "only_comments_docstrings_and_message_strings_changed": true,
+        "ast_equivalent_except_text": true
+      },
+      "resampling.py": {
+        "original_bundle_sha256": "87889ee97e04b00409f70bcacb60558de8fc57b3192a3a714ac847da1cfd0614",
+        "english_bundle_sha256": "873dde4a00aece711f4b50cf7fa658ff733af0efa8b9eca0c0f9bd77d279820d",
+        "translated_tokens": 13,
+        "only_comments_docstrings_and_message_strings_changed": true,
+        "ast_equivalent_except_text": true
+      },
+      "sgm/models/astreIR_SBn.py": {
+        "original_bundle_sha256": "1d75c01fddf17d86fdb40c39fd9f7f85c686eca04184906e5992c80c698c83e0",
+        "english_bundle_sha256": "965812d8454e119b3adaf4b5cdbfc34f044838febd53780e20a9af7e07d06b16",
+        "translated_tokens": 181,
+        "only_comments_docstrings_and_message_strings_changed": true,
+        "ast_equivalent_except_text": true
+      },
+      "sgm/modules/diffusionmodules/openaimodel.py": {
+        "original_bundle_sha256": "3685f372e0d395b4acd532fefdf177474b68a8c405af88f27da1e660b5a47349",
+        "english_bundle_sha256": "d9f2f7c5d613d498c191805a6c9c9238ea83bc53fbaff55dd53850fdc88e9454",
+        "translated_tokens": 78,
+        "only_comments_docstrings_and_message_strings_changed": true,
+        "ast_equivalent_except_text": true
+      },
+      "sgm/modules/diffusionmodules/util.py": {
+        "original_bundle_sha256": "15126de8ebbbe155d54329863e43a992984464b5999a520bd0ba1c29df187c9a",
+        "english_bundle_sha256": "fc47e1b4f81c5d0e3370bcef24a458bc3a7b18fec1223de25a3c0fc1345bd9f0",
+        "translated_tokens": 1,
+        "only_comments_docstrings_and_message_strings_changed": true,
+        "ast_equivalent_except_text": true
+      },
+      "sgm/transforms/pixel_stretch.py": {
+        "original_bundle_sha256": "23b9fce61999a1ab22348f1243a3e3654c4dbd3ff74b375875a2d905de6ab930",
+        "english_bundle_sha256": "86b41053a580491bda3a8aed999bd8f288fea222d6cad2dfc1526776ca0b36ee",
+        "translated_tokens": 72,
+        "only_comments_docstrings_and_message_strings_changed": true,
+        "ast_equivalent_except_text": true
+      },
+      "sgm/util.py": {
+        "original_bundle_sha256": "691f1443bbcc6917c0e5ec183f835b43d7f27979b7c9dad7531f13a18dd84b68",
+        "english_bundle_sha256": "8e73c0efd0e820370b072dce579f0a36c20131ee994dd0a1f4db1cc216955ff2",
+        "translated_tokens": 1,
+        "only_comments_docstrings_and_message_strings_changed": true,
+        "ast_equivalent_except_text": true
+      }
+    }
   }
 }

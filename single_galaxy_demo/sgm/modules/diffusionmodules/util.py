@@ -34,7 +34,7 @@ def make_beta_schedule(
     elif schedule == "redshifting":
         assert sample_redshift > 0
         split_point = 0.3
-        num_points_left = int(n_timestep * 0.7)  # 比如 70% 的点在左侧
+        num_points_left = int(n_timestep * 0.7)  # For example, place 70% of the points on the left.
         num_points_right = n_timestep - num_points_left
         x_left = torch.linspace(0, split_point, num_points_left)
         x_right = torch.linspace(split_point, 3, num_points_right)
