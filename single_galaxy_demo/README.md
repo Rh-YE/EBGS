@@ -8,7 +8,7 @@ Inputs are sky-subtracted, linear-flux DESI FITS images with `r,z` or `g,r,z` ch
 
 **Copyright (c) 2026 EBGS Authors.** Authors: Renhao Ye and Shiyin Shen. The code is distributed under the repository's [MIT License](https://github.com/Rh-YE/EBGS/blob/main/LICENSE); retain its copyright and license notices when redistributing it. Third-party components retain their respective notices.
 
-**Citation requirement:** Cite Renhao Ye and Shiyin Shen (2026), *From DESI to Euclid: A Generative Bridge to Unbiased Galaxy Structures*, [arXiv:2607.06891](https://arxiv.org/abs/2607.06891), in any research or publication that uses this notebook, the EBGS model, or images generated with it. A BibTeX entry is provided at the beginning of the notebook.
+**Citation requirement:** Cite Renhao Ye and Shiyin Shen (2026), *From DESI to Euclid: A Generative Bridge to Improve Measurements of Galaxy Structure*, **The Astrophysical Journal Letters, 1009**(1), L10, [doi:10.3847/2041-8213/ae9cbf](https://doi.org/10.3847/2041-8213/ae9cbf), in any research or publication that uses this notebook, the EBGS model, or images generated with it. A BibTeX entry is provided at the beginning of the notebook.
 
 ## Folder contents
 

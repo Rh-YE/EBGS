@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the article below."
+message: "If you use this software, please cite the published article below."
 title: EBGS
 authors:
   - family-names: Ye
@@ -10,16 +10,17 @@ license: MIT
 repository-code: "https://github.com/Rh-YE/EBGS"
 preferred-citation:
   type: article
-  title: "From DESI to Euclid: A Generative Bridge to Unbiased Galaxy Structures"
+  title: "From DESI to Euclid: A Generative Bridge to Improve Measurements of Galaxy Structure"
   authors:
     - family-names: Ye
       given-names: Renhao
     - family-names: Shen
       given-names: Shiyin
   year: 2026
-  journal: "arXiv preprint arXiv:2607.06891"
-  identifiers:
-    - type: other
-      value: "arXiv:2607.06891"
-      description: "ArXiv ID"
-  url: "https://arxiv.org/abs/2607.06891"
+  month: 9
+  journal: "The Astrophysical Journal Letters"
+  volume: "1009"
+  issue: "1"
+  start: "L10"
+  doi: "10.3847/2041-8213/ae9cbf"
+  url: "https://doi.org/10.3847/2041-8213/ae9cbf"

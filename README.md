@@ -253,18 +253,22 @@ All components (model, dataset, optimizer, callbacks) are specified as `target: 
 
 ## Citation
 
-If you use this code in your research, please cite:
+If you use this code in your research, please cite the published article:
+
+Renhao Ye and Shiyin Shen (2026), *From DESI to Euclid: A Generative Bridge to Improve Measurements of Galaxy Structure*, **The Astrophysical Journal Letters, 1009**(1), L10, [doi:10.3847/2041-8213/ae9cbf](https://doi.org/10.3847/2041-8213/ae9cbf).
 
 ```bibtex
 @article{ye2026desi2euclid,
-  title   = {From DESI to Euclid: A Generative Bridge to Unbiased Galaxy Structures},
+  title   = {From {DESI} to {Euclid}: A Generative Bridge to Improve Measurements of Galaxy Structure},
   author  = {Ye, Renhao and Shen, Shiyin},
-  journal = {arXiv preprint arXiv:2607.06891},
+  journal = {The Astrophysical Journal Letters},
   year    = {2026},
-  eprint  = {2607.06891},
-  archivePrefix = {arXiv},
-  primaryClass  = {astro-ph.GA},
-  url     = {https://arxiv.org/abs/2607.06891}
+  volume  = {1009},
+  number  = {1},
+  pages   = {L10},
+  month   = sep,
+  doi     = {10.3847/2041-8213/ae9cbf},
+  url     = {https://doi.org/10.3847/2041-8213/ae9cbf}
 }
 ```
 
